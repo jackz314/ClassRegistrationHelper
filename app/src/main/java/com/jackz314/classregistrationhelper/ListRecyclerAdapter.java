@@ -22,12 +22,12 @@ class ListRecyclerAdapter extends RecyclerView.Adapter<ListRecyclerAdapter.ListR
      * Creates new List Recycler Adapter
      *
      * @param arrayList list with each element being an array
-     *                  array pos 0: class number
-     *                  array pos 1: class description/title
-     *                  array pos 2: class crn number
-     *                  array pos 3: class available seats count
+     *                  array pos 0: course number
+     *                  array pos 1: course description/title
+     *                  array pos 2: course crn number
+     *                  array pos 3: course available seats count
      */
-    ListRecyclerAdapter(ArrayList<String[]> arrayList){
+    ListRecyclerAdapter(List<String[]> arrayList){
        this.list = arrayList;
        arrayListFiltered = arrayList;
    }
@@ -48,21 +48,21 @@ class ListRecyclerAdapter extends RecyclerView.Adapter<ListRecyclerAdapter.ListR
             final String classDescription = arrayListFiltered.get(position)[1];
             final String crnNumber = arrayListFiltered.get(position)[2];
             final String availableSeats = arrayListFiltered.get(position)[3];
-            holder.classNumberTxt.setText(classNumber);
-            holder.classDescriptionTxt.setText(classDescription);
-            holder.classCrnTxt.setText(crnNumber);
-            holder.availableSeatsTxt.setText(availableSeats);
+            holder.courseNumberTxt.setText(classNumber);
+            holder.courseDescriptionTxt.setText(classDescription);
+            holder.courseCrnTxt.setText(crnNumber);
+            holder.courseAvailableSeatsTxt.setText(availableSeats);
         }
     }
 
    static class ListRecyclerViewHolder extends RecyclerView.ViewHolder{
-       TextView classNumberTxt, classDescriptionTxt, classCrnTxt, availableSeatsTxt;
+       TextView courseNumberTxt, courseDescriptionTxt, courseCrnTxt, courseAvailableSeatsTxt;
        ListRecyclerViewHolder(View itemView) {
            super(itemView);
-           classNumberTxt = itemView.findViewById(R.id.class_number_txt);
-           classDescriptionTxt = itemView.findViewById(R.id.class_description_txt);
-           classCrnTxt = itemView.findViewById(R.id.crn_no_txt);
-           availableSeatsTxt = itemView.findViewById(R.id.avaliable_seat_count_txt);
+           courseNumberTxt = itemView.findViewById(R.id.class_number_txt);
+           courseDescriptionTxt = itemView.findViewById(R.id.class_description_txt);
+           courseCrnTxt = itemView.findViewById(R.id.crn_no_txt);
+           courseAvailableSeatsTxt = itemView.findViewById(R.id.avaliable_seat_count_txt);
        }
    }
 

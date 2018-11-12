@@ -6,4 +6,92 @@
     <string name="nav_header_subtitle">android.studio@android.com</string>
     <string name="nav_header_desc">Navigation header</string>
     <string name="action_settings">Settings</string>
+
+    <string name="toast_internet_error">Can\'t connect to the internet, please try again later</string>
+
+    <string name="get_catalog_url">https://mystudentrecord.ucmerced.edu/pls/PROD/xhwschedule.P_ViewSchedule</string>
+    <string name="get_valid_terms_url"></string>
+    <string name="title_activity_settings">Settings</string>
+
+    <!-- Strings related to Settings -->
+
+    <!-- Example General settings -->
+    <string name="pref_header_general">General</string>
+
+    <string name="pref_key_valid_term_values">pref_key_valid_terms</string>
+    <string name="pref_key_valid_term_names">pref_key_valid_term_names</string>
+    <string name="pref_key_valid_major_values">pref_key_valid_major_values</string>
+    <string name="pref_key_valid_major_names">pref_key_valid_major_names</string>
+
+    <string name="last_sync_time">last_sync_time</string>
+
+    <string name="pref_key_only_show_open">only_show_open_classes</string>
+    <string name="pref_title_only_show_open_classes">Only show open classes</string>
+    <string name="pref_description_only_show_open_classes">Show classes that still has seats available</string>
+
+    <string name="pref_title_display_name">Display name</string>
+    <string name="pref_default_display_name">John Smith</string>
+
+    <string name="pref_title_major">Choose majors</string>
+    <string name="pref_key_major">pref_key_valid_major</string>
+
+    <string name="pref_key_term">pref_key_valid_term</string>
+    <string name="pref_title_term">Choose Term</string>
+    <string-array name="pref_example_list_titles">
+        <item>Always</item>
+        <item>When possible</item>
+        <item>Never</item>
+    </string-array>
+    <string-array name="pref_example_list_values">
+        <item>1</item>
+        <item>0</item>
+        <item>-1</item>
+    </string-array>
+
+    <!-- Example settings for Data & Sync -->
+    <string name="pref_header_data_sync">Data &amp; sync</string>
+
+    <string name="pref_title_sync_frequency">Sync frequency</string>
+    <string-array name="pref_sync_frequency_titles">
+        <item>15 minutes</item>
+        <item>30 minutes</item>
+        <item>1 hour</item>
+        <item>3 hours</item>
+        <item>6 hours</item>
+        <item>Never</item>
+    </string-array>
+    <string-array name="pref_sync_frequency_values">
+        <item>15</item>
+        <item>30</item>
+        <item>60</item>
+        <item>180</item>
+        <item>360</item>
+        <item>-1</item>
+    </string-array>
+
+    <string-array name="list_preference_entries">
+        <item>Entry 1</item>
+        <item>Entry 2</item>
+        <item>Entry 3</item>
+    </string-array>
+
+    <string-array name="list_preference_entry_values">
+        <item>1</item>
+        <item>2</item>
+        <item>3</item>
+    </string-array>
+
+    <string-array name="multi_select_list_preference_default_value" />
+
+    <string name="pref_title_system_sync_settings">System sync settings</string>
+
+    <!-- Example settings for Notifications -->
+    <string name="pref_header_notifications">Notifications</string>
+
+    <string name="pref_title_new_message_notifications">New message notifications</string>
+
+    <string name="pref_title_ringtone">Ringtone</string>
+    <string name="pref_ringtone_silent">Silent</string>
+
+    <string name="pref_title_vibrate">Vibrate</string>
 </resources>
