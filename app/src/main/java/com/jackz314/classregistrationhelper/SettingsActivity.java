@@ -7,10 +7,14 @@ import android.content.res.Configuration;
 import android.media.Ringtone;
 import android.media.RingtoneManager;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.preference.ListPreference;
+import android.preference.MultiSelectListPreference;
 import android.preference.Preference;
 import android.preference.PreferenceActivity;
+import android.preference.SwitchPreference;
+import android.provider.Settings;
 import android.support.v7.app.ActionBar;
 import android.preference.PreferenceFragment;
 import android.preference.PreferenceManager;
@@ -19,6 +23,8 @@ import android.text.TextUtils;
 import android.view.MenuItem;
 import android.support.v4.app.NavUtils;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 
@@ -39,52 +45,50 @@ public class SettingsActivity extends AppCompatPreferenceActivity {
      * A preference value change listener that updates the preference's summary
      * to reflect its new value.
      */
-    private static Preference.OnPreferenceChangeListener sBindPreferenceSummaryToValueListener = new Preference.OnPreferenceChangeListener() {
-        @Override
-        public boolean onPreferenceChange(Preference preference, Object value) {
-            String stringValue = value.toString();
+    private static Preference.OnPreferenceChangeListener sBindPreferenceSummaryToValueListener = (preference, value) -> {
+        String stringValue = value.toString();
 
-            if (preference instanceof ListPreference) {
-                // For list preferences, look up the correct display value in
-                // the preference's 'entries' list.
-                ListPreference listPreference = (ListPreference) preference;
-                int index = listPreference.findIndexOfValue(stringValue);
+        if (preference instanceof ListPreference) {
+            // For list preferences, look up the correct display value in
+            // the preference's 'entries' list.
+            ListPreference listPreference = (ListPreference) preference;
+            int index = listPreference.findIndexOfValue(stringValue);
 
-                // Set the summary to reflect the new value.
-                preference.setSummary(
-                        index >= 0
-                                ? listPreference.getEntries()[index]
-                                : null);
+            // Set the summary to reflect the new value.
+            preference.setSummary(
+                    index >= 0
+                            ? listPreference.getEntries()[index]
+                            : null);
 
-            } else if (preference instanceof RingtonePreference) {
-                // For ringtone preferences, look up the correct display value
-                // using RingtoneManager.
-                if (TextUtils.isEmpty(stringValue)) {
-                    // Empty values correspond to 'silent' (no ringtone).
-                    preference.setSummary(R.string.pref_ringtone_silent);
-
-                } else {
-                    Ringtone ringtone = RingtoneManager.getRingtone(
-                            preference.getContext(), Uri.parse(stringValue));
-
-                    if (ringtone == null) {
-                        // Clear the summary if there was a lookup error.
-                        preference.setSummary(null);
-                    } else {
-                        // Set the summary to reflect the new ringtone display
-                        // name.
-                        String name = ringtone.getTitle(preference.getContext());
-                        preference.setSummary(name);
-                    }
-                }
+        } else if (preference instanceof RingtonePreference) {
+            // For ringtone preferences, look up the correct display value
+            // using RingtoneManager.
+            if (TextUtils.isEmpty(stringValue)) {
+                // Empty values correspond to 'silent' (no ringtone).
+                preference.setSummary(R.string.pref_ringtone_silent);
 
             } else {
-                // For all other preferences, set the summary to the value's
-                // simple string representation.
-                preference.setSummary(stringValue);
+                Ringtone ringtone = RingtoneManager.getRingtone(
+                        preference.getContext(), Uri.parse(stringValue));
+
+                if (ringtone == null) {
+                    // Clear the summary if there was a lookup error.
+                    preference.setSummary(null);
+                } else {
+                    // Set the summary to reflect the new ringtone display
+                    // name.
+                    String name = ringtone.getTitle(preference.getContext());
+                    preference.setSummary(name);
+                }
             }
-            return true;
+
+        } else {
+            // For all other preferences, set the summary to the value's
+            // simple string representation.
+            preference.setSummary(stringValue);
         }
+        Context context = preference.getContext();
+        return true;
     };
 
     /**
@@ -169,6 +173,8 @@ public class SettingsActivity extends AppCompatPreferenceActivity {
      * This is the one and only preference fragment that we are going to show since it's really simple
      */
     public static class PrefsFragment extends PreferenceFragment {
+
+        @SuppressWarnings("unchecked")
         @Override
         public void onCreate(Bundle savedInstanceState) {
             super.onCreate(savedInstanceState);
@@ -180,14 +186,57 @@ public class SettingsActivity extends AppCompatPreferenceActivity {
             // updated to reflect the new value, per the Android Design
             // guidelines.
             SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getContext());
-            bindPreferenceSummaryToValue(findPreference(getString(R.string.pref_key_only_show_open)));
             bindPreferenceSummaryToValue(findPreference(getString(R.string.pref_key_term)));
             ListPreference termListPreference = (ListPreference) findPreference(getString(R.string.pref_key_term));
-            ListPreference majorListPreference = (ListPreference) findPreference(getString(R.string.pref_key_term));
-            termListPreference.setEntryValues(sharedPreferences.getStringSet(getString(R.string.pref_key_valid_term_values), new HashSet<>()).toArray(new String[0]));
-            termListPreference.setEntries(sharedPreferences.getStringSet(getString(R.string.pref_key_valid_term_names), new HashSet<>()).toArray(new String[0]));
-            majorListPreference.setEntryValues(sharedPreferences.getStringSet(getString(R.string.pref_key_valid_major_values), new HashSet<>()).toArray(new String[0]));
-            majorListPreference.setEntries(sharedPreferences.getStringSet(getString(R.string.pref_key_valid_major_names), new HashSet<>()).toArray(new String[0]));
+            termListPreference.setEntryValues(sharedPreferences.getString(getString(R.string.pref_key_valid_term_values), "").split(";"));
+            termListPreference.setEntries(sharedPreferences.getString(getString(R.string.pref_key_valid_term_names), "").split(";"));
+            termListPreference.setDefaultValue(sharedPreferences.getString(getString(R.string.pref_key_term), null));
+            int index = termListPreference.findIndexOfValue(sharedPreferences.getString(getString(R.string.pref_key_term), null));
+            termListPreference.setSummary(index >= 0 ? termListPreference.getEntries()[index] : null);
+            termListPreference.setOnPreferenceChangeListener((preference, o) -> {
+                sharedPreferences.edit().putBoolean(getContext().getString(R.string.changed_settings), true).apply();
+                return true;
+            });
+
+            MultiSelectListPreference majorListPreference = (MultiSelectListPreference) findPreference(getString(R.string.pref_key_major));
+            majorListPreference.setEntryValues(sharedPreferences.getString(getString(R.string.pref_key_valid_major_values), "").split(";"));
+            majorListPreference.setEntries(sharedPreferences.getString(getString(R.string.pref_key_valid_major_names), "").split(";"));
+            majorListPreference.setDefaultValue(sharedPreferences.getStringSet(getString(R.string.pref_key_major), new HashSet<>(Collections.singletonList("ALL"))));
+            majorListPreference.setSummary(TextUtils.join(", ", majorListPreference.getValues()));
+            majorListPreference.setOnPreferenceChangeListener((preference, newValue) -> {
+                List<String> newValues = new ArrayList<>((HashSet<String>) newValue);
+                sharedPreferences.edit().putBoolean(getContext().getString(R.string.changed_settings), true).apply();
+                if(newValues.contains("ALL")){
+                    sharedPreferences.edit().putStringSet(getString(R.string.pref_key_major), new HashSet<>(Collections.singletonList("ALL"))).apply();
+                    preference.setSummary("All");
+                    return false;
+                }else {
+                    preference.setSummary(TextUtils.join(", ", newValues));
+                    return true;
+                }
+            });
+
+            Preference sysNotifPreference = findPreference(getString(R.string.pref_key_sys_notif_setting));
+            sysNotifPreference.setOnPreferenceClickListener(preference -> {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    Intent intent = new Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS);
+                    intent.putExtra(Settings.EXTRA_APP_PACKAGE, getContext().getPackageName());
+                    startActivity(intent);
+                }else {
+                    Intent intent = new Intent();
+                    intent.setAction("android.settings.APP_NOTIFICATION_SETTINGS");
+                    intent.putExtra("app_package", getContext().getPackageName());
+                    intent.putExtra("app_uid", getContext().getApplicationInfo().uid);
+                    startActivity(intent);
+                }
+                return false;
+            });
+
+            SwitchPreference openClassPreference = (SwitchPreference)findPreference(getString(R.string.pref_key_only_show_open_classes));
+            openClassPreference.setOnPreferenceChangeListener((preference, o) -> {
+                sharedPreferences.edit().putBoolean(getContext().getString(R.string.changed_settings), true).apply();
+                return true;
+            });
         }
 
         @Override
@@ -199,6 +248,7 @@ public class SettingsActivity extends AppCompatPreferenceActivity {
             }
             return super.onOptionsItemSelected(item);
         }
+
     }
 
 }

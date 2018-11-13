@@ -4,10 +4,10 @@
 
         <SwitchPreference
             android:defaultValue="false"
-            android:key="@string/pref_key_only_show_open"
-            android:summary="@string/pref_description_only_show_open_classes"
+            android:key="@string/pref_key_only_show_open_classes"
+            android:summary="@string/pref_content_only_show_open_classes"
             android:title="@string/pref_title_only_show_open_classes" />
-        <EditTextPreference
+        <!--<EditTextPreference
             android:layout_height="wrap_content"
             android:capitalize="words"
             android:defaultValue="@string/pref_default_display_name"
@@ -16,15 +16,11 @@
             android:maxLines="1"
             android:selectAllOnFocus="true"
             android:singleLine="true"
-            android:title="@string/pref_title_display_name" />
+            android:title="@string/pref_title_display_name" />-->
         <MultiSelectListPreference
-            android:defaultValue="0"
-            android:entries="@array/list_preference_entries"
-            android:entryValues="@array/list_preference_entry_values"
             android:key="@string/pref_key_major"
-            android:title="Multi select list preference" />
+            android:title="@string/pref_title_major" />
         <ListPreference
-            android:defaultValue="0"
             android:entries="@array/pref_example_list_titles"
             android:entryValues="@array/pref_example_list_values"
             android:key="@string/pref_key_term"
@@ -40,23 +36,22 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:defaultValue="true"
-            android:key="switch_preference_1"
-            android:title="@string/pref_title_new_message_notifications" />
-        <SwitchPreference
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:defaultValue="true"
-            android:dependency="notifications_new_message"
-            android:key="switch_preference_1"
-            android:title="@string/pref_title_vibrate" />
+            android:key="@string/pref_key_notif"
+            android:title="@string/pref_title_notif"
+            android:summary="@string/pref_content_notif"/>
         <RingtonePreference
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:defaultValue="content://settings/system/notification_sound"
-            android:dependency="notifications_new_message"
             android:key="ringtone_preference_1"
             android:ringtoneType="notification"
             android:title="@string/pref_title_ringtone" />
+        <Preference
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:key="@string/pref_key_sys_notif_setting"
+            android:title="@string/pref_title_sys_notif_setting"
+            />
     </PreferenceCategory>
 
     <!-- NOTE: EditTextPreference accepts EditText attributes. -->
