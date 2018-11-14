@@ -38,8 +38,8 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
 import java.io.IOException;
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
@@ -80,24 +80,28 @@ public class MainActivity extends AppCompatActivity
         sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
         courseCatalogAdapter =new ListRecyclerAdapter(new ArrayList<>());//initialize first, wait for download to finish and swap in the data
         courseCatalogRecyclerView.setAdapter(courseCatalogAdapter);
-        new GetCatalogTask().execute();
+        new GetCatalogTask(this).execute();
 
         swipeRefreshLayout = findViewById(R.id.swipe_refresh_layout);
-        swipeRefreshLayout.setOnRefreshListener(() -> new GetCatalogTask().execute());
+        swipeRefreshLayout.setOnRefreshListener(() -> new GetCatalogTask(this).execute());
 
         RecyclerViewItemClickSupport.addTo(courseCatalogRecyclerView).setOnItemClickListener(new RecyclerViewItemClickSupport.OnItemClickListener() {
             @Override
             public void onItemClicked(RecyclerView recyclerView, int position, View v) {
-                String[] courseInfo = courseCatalogAdapter.getItemAtPos(position);
+                Course courseInfo = courseCatalogAdapter.getItemAtPos(position);
+                int courseNumberSecondDashIndex = courseInfo.getNumber().indexOf('-', courseInfo.getNumber().indexOf('-', 0));
+                if(courseNumberSecondDashIndex == -1){
+                    courseNumberSecondDashIndex = courseInfo.getNumber().length();
+                }
                 String urlForCourseStr = getString(R.string.get_course_url);
                 HttpUrl urlForCourse = HttpUrl.parse(urlForCourseStr).newBuilder()
-                        .addQueryParameter("subjcode", courseInfo[0].substring(0, courseInfo[1].indexOf('-')))
-                        .addQueryParameter("crsenumb", courseInfo[0].substring(courseInfo[1].indexOf('-', 0), courseInfo[0].indexOf('-', courseInfo[1].indexOf('-', 0))))
+                        .addQueryParameter("subjcode", courseInfo.getNumber().substring(0, courseInfo.getNumber().indexOf('-')))
+                        .addQueryParameter("crsenumb", courseInfo.getNumber().substring(courseInfo.getNumber().indexOf('-', 0), courseNumberSecondDashIndex))//position of second '-' if exist
                         .addQueryParameter("validterm", sharedPreferences.getString(getString(R.string.pref_key_term), null))//default value should't be used based on design
-                        .addQueryParameter("crn", courseInfo[2]).build();
+                        .addQueryParameter("crn", courseInfo.getCrn()).build();
                 Intent intent = new Intent(MainActivity.this, CourseActivity.class);
                 intent.putExtra("URL", urlForCourse.toString());
-
+                intent.putStringArrayListExtra("CourseInfo", courseInfo.getCourseInfoForDetail());
             }
         });
 
@@ -170,20 +174,27 @@ public class MainActivity extends AppCompatActivity
         //System.out.println("calledquery" + " " + text);
     }
 
-    private class GetCatalogTask extends AsyncTask<String[], Void, List<String[]>>{
+    private static class GetCatalogTask extends AsyncTask<String[], Void, List<Course>>{
+
+        private WeakReference<MainActivity> activityReference;
+
+        GetCatalogTask(MainActivity context){
+            activityReference = new WeakReference<>(context);
+        }
 
         @Override
-        protected List<String[]> doInBackground(String[]... subjectCode) {
-            Set<String> subjCode = sharedPreferences.getStringSet(getString(R.string.pref_key_major), new HashSet<>(Collections.singletonList("ALL")));
+        protected List<Course> doInBackground(String[]... subjectCode) {
+            MainActivity activity = activityReference.get();
+            Set<String> subjCode = activity.sharedPreferences.getStringSet(activity.getString(R.string.pref_key_major), new HashSet<>(Collections.singletonList("ALL")));
             if(subjectCode != null && subjectCode.length > 0 && subjectCode[0].length > 0){
                 subjCode = new HashSet<>(Collections.singletonList("ALL"));
             }
-            List<String[]> catalog = new ArrayList<>();
+            List<Course> catalog = new ArrayList<>();
             OkHttpClient client = new OkHttpClient();
-            String getCatalogUrl = getString(R.string.get_catalog_url);
-            String[] validTermValues = sharedPreferences.getString(getString(R.string.pref_key_valid_term_values), "").split(";");
+            String getCatalogUrl = activity.getString(R.string.get_catalog_url);
+            String[] validTermValues = activity.sharedPreferences.getString(activity.getString(R.string.pref_key_valid_term_values), "").split(";");
             if(validTermValues[0].equals("")){
-                String[][] validTerms = getValidTerms(getApplicationContext());
+                String[][] validTerms = getValidTerms(activity);
                 if(validTerms.length == 0){//internet problems
                     return catalog;//empty
                 }else {
@@ -191,26 +202,26 @@ public class MainActivity extends AppCompatActivity
                     String[] validTermNames = validTerms[1];
                     //store defaults into sharedpreference if started for the first time
                     //major values/names as well
-                    String[] validMajorValues = getValidMajors(getApplicationContext())[0];
-                    String[] validMajorNames = getValidMajors(getApplicationContext())[1];
-                    storeDefaultCatalogInfo(validTerms[0][0]/*latest valid term for default*/
+                    String[] validMajorValues = getValidMajors(activity)[0];
+                    String[] validMajorNames = getValidMajors(activity)[1];
+                    storeDefaultCatalogInfo(activity, validTerms[0][0]/*latest valid term for default*/
                             , validTermValues, validTermNames, validMajorValues, validMajorNames);
                 }
             }else{
                 //check for the last time updated the information
                 Calendar calendar = Calendar.getInstance();
                 calendar.add(Calendar.MONTH, -3);//set to three months ago from now
-                Long lastSyncTime = sharedPreferences.getLong(getString(R.string.last_sync_time), -1);
+                Long lastSyncTime = activity.sharedPreferences.getLong(activity.getString(R.string.last_sync_time), -1);
                 if(lastSyncTime == -1){
                     //this shouldn't happen
                 }
                 if(new Date(lastSyncTime).before(calendar.getTime())){//last sync is before three months
                     //sync again
-                    String[] newValidTermValues = getValidTerms(getApplicationContext())[0];
-                    String[] newValidTermNames = getValidTerms(getApplicationContext())[1];
-                    String[] newValidMajorValues = getValidMajors(getApplicationContext())[0];
-                    String[] newValidMajorNames = getValidMajors(getApplicationContext())[1];
-                    storeDefaultCatalogInfo(newValidTermValues[0],/*latest valid term for default*/
+                    String[] newValidTermValues = getValidTerms(activity)[0];
+                    String[] newValidTermNames = getValidTerms(activity)[1];
+                    String[] newValidMajorValues = getValidMajors(activity)[0];
+                    String[] newValidMajorNames = getValidMajors(activity)[1];
+                    storeDefaultCatalogInfo(activity, newValidTermValues[0],/*latest valid term for default*/
                             newValidTermValues, newValidTermNames, newValidMajorValues, newValidMajorNames);
                     validTermValues = newValidTermValues;//update old term values
                 }
@@ -221,9 +232,9 @@ public class MainActivity extends AppCompatActivity
             String major = "ALL";
             if(subjCode.size() == 1) major = subjCode.iterator().next();
             RequestBody requestBody = new FormBody.Builder()
-                    .add("validterm", sharedPreferences.getString(getString(R.string.pref_key_term), defaultTerm))
+                    .add("validterm", activity.sharedPreferences.getString(activity.getString(R.string.pref_key_term), defaultTerm))
                     .add("subjcode", major)
-                    .add("openclasses",  sharedPreferences.getBoolean(getString(R.string.pref_key_only_show_open_classes), false) ? "Y" : "N")
+                    .add("openclasses",  activity.sharedPreferences.getBoolean(activity.getString(R.string.pref_key_only_show_open_classes), false) ? "Y" : "N")
                     .build();
             Request request = new Request.Builder()
                     .url(getCatalogUrl)
@@ -239,45 +250,63 @@ public class MainActivity extends AppCompatActivity
                 }
                 Document document = Jsoup.parse(htmlResponse);
                 Elements courseList = document.select("tr[bgcolor=\"#DDDDDD\"], tr[bgcolor=\"#FFFFFF\"]");
-                for (Element course: courseList) {
+                for (int i = 0, courseListSize = courseList.size(); i < courseListSize; i++) {
+                    Element courseElement = courseList.get(i);
                     /*if(!(course.text().startsWith("EXAM")||
                             course.text().startsWith("LECT")||
                             course.text().startsWith("LAB"))||
                             course.text().startsWith("SEM")){*///exclude separate exam/lect/lab/sem info elements
-                    if(course.children().size() == 13){//only include whole information elements
-                        String[] courseInfo = new String[4];
-                        courseInfo[0] = course.child(1).text();//course number
-                        courseInfo[1] = course.child(2).text();//course description/title
-                        courseInfo[2] = course.child(0).text();//course crn
-                        courseInfo[3] = course.child(12).text();//course available seats
-                        if(subjCode.size() > 1){//multiple subject code support
-                            //check if course number starts with one of the wanted subject codes
-                            if(subjCode.contains(courseInfo[0].substring(0, courseInfo[0].indexOf('-')))){
-                                Log.i(TAG, "Course info: " + Arrays.deepToString(courseInfo));
-                                catalog.add(courseInfo);
-                            }
-                        }else {
-                            Log.i(TAG, "Course info: " + Arrays.deepToString(courseInfo));
-                            catalog.add(courseInfo);
+                    if (courseElement.children().size() == 13) {//only include whole information elements
+                        Course course = new CourseBuilder().buildCourse();
+                        course.setCrn(courseElement.child(0).text());//course crn
+                        course.setNumber(courseElement.child(1).text());//course number
+                        course.setTitle(courseElement.child(2).text());//course title
+                        course.setAvailableSeats(courseElement.child(12).text());//course available seats
+                        //set other stuff for detail display later
+                        course.addType(courseElement.child(4).text());
+                        course.addDays(courseElement.child(5).text());
+                        course.addTime(courseElement.child(6).text());
+                        course.addLocation(courseElement.child(7).text());
+                        course.addPeriod(courseElement.child(8).text());
+                        course.setInstructor(courseElement.child(9).text());
+                        int tempIndex = i;
+                        while (courseList.get(tempIndex).children().size() == 12){//add additional exam/lect/lab/sem info elements
+                            course.addType(courseElement.child(3).text());
+                            course.addDays(courseElement.child(4).text());
+                            course.addTime(courseElement.child(5).text());
+                            course.addLocation(courseElement.child(6).text());
+                            course.addPeriod(courseElement.child(7).text());
+                            tempIndex++;
                         }
-
+                        if(tempIndex > i) i = tempIndex;//skip the added ones
+                        if (subjCode.size() > 1) {//multiple subject code support
+                            //check if course number starts with one of the wanted subject codes
+                            if (subjCode.contains(course.getMajor())) {
+                                Log.i(TAG, "Course info: " + course.toString());
+                                catalog.add(course);
+                            }
+                        } else {
+                            Log.i(TAG, "Course info: " + course.toString());
+                            catalog.add(course);
+                        }
                     }
                 }
                 return catalog;
             } catch (IOException e) {
                 Log.e(TAG, e.getMessage());
                 e.printStackTrace();
-                Toast.makeText(getApplicationContext(), getString(R.string.toast_internet_error), Toast.LENGTH_SHORT).show();
+                Toast.makeText(activity, activity.getString(R.string.toast_internet_error), Toast.LENGTH_SHORT).show();
                 return catalog;//empty
             }
 
         }
 
         @Override
-        protected void onPostExecute(List<String[]> list) {
-            courseCatalogAdapter.swapNewDataSet(list);
-            loadProgress.setVisibility(View.GONE);
-            swipeRefreshLayout.setRefreshing(false);
+        protected void onPostExecute(List<Course> list) {
+            MainActivity activity = activityReference.get();
+            activity.courseCatalogAdapter.swapNewDataSet(list);
+            activity.loadProgress.setVisibility(View.GONE);
+            activity.swipeRefreshLayout.setRefreshing(false);
         }
     }
 
@@ -359,17 +388,17 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
-    void storeDefaultCatalogInfo(String defaultTerm, String[] validTermValues, String[] validTermNames, String[] validMajorValues, String[] validMajorNames){
-        SharedPreferences.Editor editor = sharedPreferences.edit();
-        editor.putString(getString(R.string.pref_key_term), defaultTerm);//put the latest valid term as the default term selection
-        editor.putStringSet(getString(R.string.pref_key_major), new HashSet<>(Collections.singletonList(validMajorValues[0])));//put ALL as default
-        editor.putString(getString(R.string.pref_key_valid_term_values), TextUtils.join(";", validTermValues));
-        editor.putString(getString(R.string.pref_key_valid_term_names), TextUtils.join(";", validTermNames));
-        editor.putString(getString(R.string.pref_key_valid_major_values), TextUtils.join(";", validMajorValues));
-        editor.putString(getString(R.string.pref_key_valid_major_names), TextUtils.join(";", validMajorNames));
+    static void storeDefaultCatalogInfo(Context context, String defaultTerm, String[] validTermValues, String[] validTermNames, String[] validMajorValues, String[] validMajorNames){
+        SharedPreferences.Editor editor = PreferenceManager.getDefaultSharedPreferences(context).edit();
+        editor.putString(context.getString(R.string.pref_key_term), defaultTerm);//put the latest valid term as the default term selection
+        editor.putStringSet(context.getString(R.string.pref_key_major), new HashSet<>(Collections.singletonList(validMajorValues[0])));//put ALL as default
+        editor.putString(context.getString(R.string.pref_key_valid_term_values), TextUtils.join(";", validTermValues));
+        editor.putString(context.getString(R.string.pref_key_valid_term_names), TextUtils.join(";", validTermNames));
+        editor.putString(context.getString(R.string.pref_key_valid_major_values), TextUtils.join(";", validMajorValues));
+        editor.putString(context.getString(R.string.pref_key_valid_major_names), TextUtils.join(";", validMajorNames));
 
         //update last sync time
-        editor.putLong(getString(R.string.last_sync_time), new Date().getTime());
+        editor.putLong(context.getString(R.string.last_sync_time), new Date().getTime());
 
         editor.commit();
     }
@@ -415,7 +444,7 @@ public class MainActivity extends AppCompatActivity
     protected void onResume() {
         if(sharedPreferences != null && sharedPreferences.getBoolean(getString(R.string.changed_settings), false)){
             swipeRefreshLayout.setRefreshing(true);
-            new GetCatalogTask().execute();
+            new GetCatalogTask(this).execute();
             sharedPreferences.edit().putBoolean(getString(R.string.changed_settings), false).apply();
         }
         super.onResume();

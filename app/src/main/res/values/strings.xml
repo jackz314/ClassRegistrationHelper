@@ -8,6 +8,7 @@
     <string name="action_settings">Settings</string>
 
     <string name="toast_internet_error">Can\'t connect to the internet, please try again later</string>
+    <string name="toast_unknown_error">Encountered unknown error, please try again later</string>
 
     <string name="get_course_url">https://mystudentrecord.ucmerced.edu/pls/PROD/xhwschedule.P_ViewCrnDetail</string>
     <string name="get_catalog_url">https://mystudentrecord.ucmerced.edu/pls/PROD/xhwschedule.P_ViewSchedule</string>
@@ -164,7 +165,7 @@
 
         "Component elevations.\n\n"
 
-        "The resting elevation for a component type is consistent across apps (e.g., FAB elevation "
+        "The resting elevation for a component types is consistent across apps (e.g., FAB elevation "
         "does not vary from 6dp in one app to 16dp in another app).\n"
         "Components may have different resting elevations across platforms, depending on the depth "
         "of the environment (e.g., TV has a greater depth than mobile or desktop).\n\n"

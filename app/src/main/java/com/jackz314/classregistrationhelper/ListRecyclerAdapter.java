@@ -22,8 +22,8 @@ import static android.graphics.Typeface.BOLD;
 
 class ListRecyclerAdapter extends RecyclerView.Adapter<ListRecyclerAdapter.ListRecyclerViewHolder> implements Filterable {
 
-   private List<String[]> originalList;
-   private List<String[]> filteredList;
+   private List<Course> originalList;
+   private List<Course> filteredList;
    private String query = null;
    private static final String TAG = "ListRecyclerAdapter";
 
@@ -36,7 +36,7 @@ class ListRecyclerAdapter extends RecyclerView.Adapter<ListRecyclerAdapter.ListR
      *                  array pos 2: course crn number
      *                  array pos 3: course available seats count
      */
-    ListRecyclerAdapter(List<String[]> list){
+    ListRecyclerAdapter(List<Course> list){
        originalList = list;
        filteredList = list;
    }
@@ -53,10 +53,10 @@ class ListRecyclerAdapter extends RecyclerView.Adapter<ListRecyclerAdapter.ListR
     @Override
     public void onBindViewHolder(@NonNull final ListRecyclerViewHolder holder, int position) {
         if(!filteredList.isEmpty() && filteredList.size() > position){
-            final SpannableString classNumber = new SpannableString(filteredList.get(position)[0]);
-            final SpannableString classDescription = new SpannableString(filteredList.get(position)[1]);
-            final SpannableString crn = new SpannableString(filteredList.get(position)[2]);
-            final SpannableString availableSeats = new SpannableString(filteredList.get(position)[3]);
+            final SpannableString classNumber = new SpannableString(filteredList.get(position).getNumber());
+            final SpannableString classDescription = new SpannableString(filteredList.get(position).getDescription());
+            final SpannableString crn = new SpannableString(filteredList.get(position).getCrn());
+            final SpannableString availableSeats = new SpannableString(filteredList.get(position).getAvailableSeats());
             //Log.i(TAG, "Position: "+ Integer.toString(position) + " " + classNumber + " " + classDescription + " " + crnNumber + " " + availableSeats);
             if(query != null && !query.isEmpty()){
                 //set bold span for the searched part
@@ -137,7 +137,7 @@ class ListRecyclerAdapter extends RecyclerView.Adapter<ListRecyclerAdapter.ListR
            @Override
            protected FilterResults performFiltering(CharSequence constraint) {
                query = constraint.toString();
-               List<String[]> arrTemp;
+               List<Course> arrTemp;
                if (query.isEmpty()) {
                    arrTemp = new ArrayList<>(originalList);
                } else {
@@ -153,32 +153,32 @@ class ListRecyclerAdapter extends RecyclerView.Adapter<ListRecyclerAdapter.ListR
            @Override
            protected void publishResults(CharSequence constraint, FilterResults results) {
                //filteredList.clear();
-               filteredList = (List<String[]>) results.values;//it's fine, ignore the warning, I had to it this way, and the way that make sure the warning goes away slows down the performance, so no... maybe find out more about it in the future
+               filteredList = (List<Course>) results.values;//it's fine, ignore the warning, I had to it this way, and the way that make sure the warning goes away slows down the performance, so no... maybe find out more about it in the future
                //System.out.println(" Filtered Result Size: "+ filteredList.size() + " Original Size: " + originalList.size());
                notifyDataSetChanged();
            }
        };
    }
 
-   private List<String[]> getFilteredList(String query){
+   private List<Course> getFilteredList(String query){
        //filteredList.clear();//clear previous stuff in it
-       List<String[]> results = new ArrayList<>();
-       for (String[] classInfo : originalList) {
+       List<Course> results = new ArrayList<>();
+       for (Course classInfo : originalList) {
            //matching...
-           if (classInfo[0].toLowerCase().contains(query.toLowerCase()) || //course number
-                   classInfo[2].contains(query) || //crn
-                   classInfo[1].toLowerCase().contains(query.toLowerCase())) { //description
+           if (classInfo.getNumber().toLowerCase().contains(query.toLowerCase()) || //course number
+                   classInfo.getCrn().contains(query) || //crn
+                   classInfo.getDescription().toLowerCase().contains(query.toLowerCase())) { //description
                results.add(classInfo);
            }
        }
        return results;
    }
 
-   String[] getItemAtPos(int position){
+   Course getItemAtPos(int position){
        return filteredList.get(position);
    }
 
-   void swapNewDataSet(List<String[]> newList)
+   void swapNewDataSet(List<Course> newList)
    {
        if(newList == null || newList.isEmpty()) return;
        if (originalList != null && !originalList.isEmpty()) originalList.clear();
