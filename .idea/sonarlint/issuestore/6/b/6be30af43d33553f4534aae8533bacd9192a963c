@@ -1,6 +1,6 @@
 
-Ksquid:S00108")Either remove or fill this block of code.(»ƒ ™şÿÿÿÿ8öÁĞŒñ,
-nsquid:S3776"RRefactor this method to reduce its Cognitive Complexity from 33 to the 15 allowed.(åÓ÷„8æâğ,
-Ksquid:S00108")Either remove or fill this block of code.(Õó³÷úÿÿÿÿ8öÁĞŒñ,
- squid:ForLoopCounterChangedCheck"XRefactor the code in order to not assign to this loop counter from within the loop body.(“ÙŠşÿÿÿÿ8…œÕŒñ,
-Fsquid:S00108")Either remove or fill this block of code.(¼ñ­ê8öÁĞŒñ,
+‰ squid:ForLoopCounterChangedCheck"XRefactor the code in order to not assign to this loop counter from within the loop body.(ååÙ8èÚ°Õò,
+nsquid:S3776"RRefactor this method to reduce its Cognitive Complexity from 32 to the 15 allowed.(åÓ÷„8èÚ°Õò,
+Fsquid:S00108")Either remove or fill this block of code.(¼ñ­ê8èÚ°Õò,
+Ksquid:S00108")Either remove or fill this block of code.(»ƒ ™şÿÿÿÿ8èÚ°Õò,
+Ksquid:S00108")Either remove or fill this block of code.(Õó³÷úÿÿÿÿ8èÚ°Õò,

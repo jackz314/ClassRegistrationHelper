@@ -13,6 +13,7 @@
     <string name="get_course_url">https://mystudentrecord.ucmerced.edu/pls/PROD/xhwschedule.P_ViewCrnDetail</string>
     <string name="get_catalog_url">https://mystudentrecord.ucmerced.edu/pls/PROD/xhwschedule.P_ViewSchedule</string>
     <string name="get_request_catalog_url">https://mystudentrecord.ucmerced.edu/pls/PROD/xhwschedule.P_selectsubject</string>
+    <string name="get_faculty_directory_url">https://www.ucmerced.edu/faculty-directory</string>
     <string name="title_activity_settings">Settings</string>
 
     <!-- Strings related to Settings -->

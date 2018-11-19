@@ -1,19 +1,26 @@
 package com.jackz314.classregistrationhelper;
 
 import android.content.Intent;
+import android.graphics.Point;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.support.design.widget.AppBarLayout;
 import android.support.design.widget.CollapsingToolbarLayout;
+import android.support.design.widget.CoordinatorLayout;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.view.Display;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import com.bumptech.glide.Glide;
 
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -157,7 +164,77 @@ public class CourseActivity extends AppCompatActivity {
         }
     }
 
+    private static class GetInstructorPhoto extends AsyncTask<String, Void, String>{
+
+        private WeakReference<CourseActivity> activityReference;
+
+        GetInstructorPhoto(CourseActivity context){
+            activityReference = new WeakReference<>(context);
+        }
+
+        @Override
+        protected String doInBackground(String... strings) {
+            String instructorName = strings[0];
+            //invalid names
+            if(instructorName == null || instructorName.isEmpty() || instructorName.equals("Staff")){
+                return null;
+            }
+            CourseActivity activity = activityReference.get();
+            OkHttpClient client = new OkHttpClient();
+            Request request = new Request.Builder()
+                    .url(activity.getString(R.string.get_faculty_directory_url))
+                    .build();
+            try {
+                Response response = client.newCall(request).execute();
+                String htmlResponse = response.body().string();
+                if(htmlResponse == null || htmlResponse.isEmpty()) return null;//empty
+                Document document = Jsoup.parse(htmlResponse);
+                //select ones that contain instructor's last name
+                String instructorLastName = instructorName.substring(0, instructorName.indexOf(','));
+                String instructorFirstName = instructorName.substring(instructorName.indexOf(' ') + 1);
+                Elements elements = document.select("a:contains(" + instructorLastName + ")")//last name
+                        .select("a:contains(" + instructorFirstName + ")")//first name
+                        .select("a:not(:contains(@))");//remove email elements
+                Log.i(TAG, elements.toString());
+                Element instructorElement = elements.first();//shouldn't have more than one, but just in case, select the first one
+                if(instructorElement == null){
+                    return null;
+                }
+                Element photoElement = instructorElement.parent().previousElementSibling().child(0);
+                Log.i(TAG, photoElement.toString());
+                return photoElement.attr("src");
+            } catch (IOException e) {//internet problems
+                e.printStackTrace();
+                Toast.makeText(activity, activity.getString(R.string.toast_internet_error), Toast.LENGTH_SHORT).show();
+                return null;
+            } catch (Exception e) {//other problems
+                e.printStackTrace();
+                Toast.makeText(activity, activity.getString(R.string.toast_unknown_error), Toast.LENGTH_SHORT).show();
+                return null;
+            }
+        }
+
+        @Override
+        protected void onPostExecute(String photoUrl) {
+            if(photoUrl != null && !photoUrl.isEmpty() && !photoUrl.contains("sealofucmerced")){//has actual profile picture
+                CourseActivity activity = activityReference.get();
+                ImageView profilePictureView = activity.toolbarLayout.findViewById(R.id.profile_picture);
+                Glide.with(activity)
+                        .load(photoUrl)
+                        .into(profilePictureView);
+                Display display = activity.getWindowManager().getDefaultDisplay();
+                Point size = new Point();
+                display.getSize(size);
+                AppBarLayout appBarLayout = activity.findViewById(R.id.course_app_bar);
+                appBarLayout.getLayoutParams().height = size.y/3;
+
+            }
+            super.onPostExecute(photoUrl);
+        }
+    }
+
     void setUiFromCourse(Course course){
+        new GetInstructorPhoto(this).execute(course.getInstructor());
         toolbarLayout.setTitle(course.getNumber());
         TextView titleText = findViewById(R.id.course_title);
         TextView crnText = findViewById(R.id.course_crn);
@@ -288,6 +365,18 @@ public class CourseActivity extends AppCompatActivity {
 
     void undoAddToList(){
 
+    }
+
+    //set CollapsingToolbarLayout height
+    private void setAppBarOffset(int offsetPx){
+        AppBarLayout appBarLayout = findViewById(R.id.course_app_bar);
+        CoordinatorLayout coordinatorLayout = findViewById(R.id.course_coordinator_layout);
+        CoordinatorLayout.LayoutParams params = (CoordinatorLayout.LayoutParams) appBarLayout.getLayoutParams();
+        AppBarLayout.Behavior behavior = (AppBarLayout.Behavior) params.getBehavior();
+        behavior.onNestedPreScroll(coordinatorLayout, appBarLayout, null, 0, offsetPx, new int[]{0, 0}, 0);
+        appBarLayout.post(() -> {
+            setAppBarOffset(offsetPx);
+        });
     }
 
     @Override
