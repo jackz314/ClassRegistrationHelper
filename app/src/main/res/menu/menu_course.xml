@@ -3,8 +3,9 @@
     xmlns:tools="http://schemas.android.com/tools"
     tools:context="com.jackz314.classregistrationhelper.CourseActivity">
     <item
-        android:id="@+id/action_settings"
+        android:id="@+id/action_goto_detail"
+        android:icon="@drawable/ic_web_black_24dp"
         android:orderInCategory="100"
-        android:title="@string/action_settings"
-        app:showAsAction="never" />
+        android:title="See Details"
+        app:showAsAction="ifRoom|withText" />
 </menu>

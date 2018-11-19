@@ -54,7 +54,7 @@ class ListRecyclerAdapter extends RecyclerView.Adapter<ListRecyclerAdapter.ListR
     public void onBindViewHolder(@NonNull final ListRecyclerViewHolder holder, int position) {
         if(!filteredList.isEmpty() && filteredList.size() > position){
             final SpannableString classNumber = new SpannableString(filteredList.get(position).getNumber());
-            final SpannableString classDescription = new SpannableString(filteredList.get(position).getDescription());
+            final SpannableString classDescription = new SpannableString(filteredList.get(position).getTitle());
             final SpannableString crn = new SpannableString(filteredList.get(position).getCrn());
             final SpannableString availableSeats = new SpannableString(filteredList.get(position).getAvailableSeats());
             //Log.i(TAG, "Position: "+ Integer.toString(position) + " " + classNumber + " " + classDescription + " " + crnNumber + " " + availableSeats);
@@ -116,7 +116,7 @@ class ListRecyclerAdapter extends RecyclerView.Adapter<ListRecyclerAdapter.ListR
            super(itemView);
            courseNumberTxt = itemView.findViewById(R.id.class_number_txt);
            courseDescriptionTxt = itemView.findViewById(R.id.class_description_txt);
-           courseCrnTxt = itemView.findViewById(R.id.crn_no_txt);
+           courseCrnTxt = itemView.findViewById(R.id.crn_num_txt);
            courseAvailableSeatsTxt = itemView.findViewById(R.id.avaliable_seat_count_txt);
        }
    }
@@ -167,7 +167,7 @@ class ListRecyclerAdapter extends RecyclerView.Adapter<ListRecyclerAdapter.ListR
            //matching...
            if (classInfo.getNumber().toLowerCase().contains(query.toLowerCase()) || //course number
                    classInfo.getCrn().contains(query) || //crn
-                   classInfo.getDescription().toLowerCase().contains(query.toLowerCase())) { //description
+                   classInfo.getTitle().toLowerCase().contains(query.toLowerCase())) { //description
                results.add(classInfo);
            }
        }

@@ -40,6 +40,7 @@ import org.jsoup.select.Elements;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
@@ -78,31 +79,31 @@ public class MainActivity extends AppCompatActivity
         courseCatalogRecyclerView = findViewById(R.id.course_catalog_recycler_view);
         courseCatalogRecyclerView.setLayoutManager(new LinearLayoutManager(this));
         sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
-        courseCatalogAdapter =new ListRecyclerAdapter(new ArrayList<>());//initialize first, wait for download to finish and swap in the data
+        courseCatalogAdapter = new ListRecyclerAdapter(new ArrayList<>());//initialize first, wait for download to finish and swap in the data
         courseCatalogRecyclerView.setAdapter(courseCatalogAdapter);
         new GetCatalogTask(this).execute();
 
         swipeRefreshLayout = findViewById(R.id.swipe_refresh_layout);
         swipeRefreshLayout.setOnRefreshListener(() -> new GetCatalogTask(this).execute());
 
-        RecyclerViewItemClickSupport.addTo(courseCatalogRecyclerView).setOnItemClickListener(new RecyclerViewItemClickSupport.OnItemClickListener() {
-            @Override
-            public void onItemClicked(RecyclerView recyclerView, int position, View v) {
-                Course courseInfo = courseCatalogAdapter.getItemAtPos(position);
-                int courseNumberSecondDashIndex = courseInfo.getNumber().indexOf('-', courseInfo.getNumber().indexOf('-', 0));
-                if(courseNumberSecondDashIndex == -1){
-                    courseNumberSecondDashIndex = courseInfo.getNumber().length();
-                }
-                String urlForCourseStr = getString(R.string.get_course_url);
-                HttpUrl urlForCourse = HttpUrl.parse(urlForCourseStr).newBuilder()
-                        .addQueryParameter("subjcode", courseInfo.getNumber().substring(0, courseInfo.getNumber().indexOf('-')))
-                        .addQueryParameter("crsenumb", courseInfo.getNumber().substring(courseInfo.getNumber().indexOf('-', 0), courseNumberSecondDashIndex))//position of second '-' if exist
-                        .addQueryParameter("validterm", sharedPreferences.getString(getString(R.string.pref_key_term), null))//default value should't be used based on design
-                        .addQueryParameter("crn", courseInfo.getCrn()).build();
-                Intent intent = new Intent(MainActivity.this, CourseActivity.class);
-                intent.putExtra("URL", urlForCourse.toString());
-                intent.putStringArrayListExtra("CourseInfo", courseInfo.getCourseInfoForDetail());
+        RecyclerViewItemClickSupport.addTo(courseCatalogRecyclerView).setOnItemClickListener((recyclerView, position, v) -> {
+            Course courseInfo = courseCatalogAdapter.getItemAtPos(position);
+            int courseNumberSecondDashIndex = courseInfo.getNumber().indexOf('-', courseInfo.getNumber().indexOf('-', 0));
+            if(courseNumberSecondDashIndex == -1){
+                courseNumberSecondDashIndex = courseInfo.getNumber().length();
             }
+            String urlForCourseStr = getString(R.string.get_course_url);
+            HttpUrl urlForCourse = HttpUrl.parse(urlForCourseStr).newBuilder()
+                    .addQueryParameter("subjcode", courseInfo.getNumber().substring(0, courseInfo.getNumber().indexOf('-')))
+                    .addQueryParameter("crsenumb", courseInfo.getNumber().substring(courseInfo.getNumber().indexOf('-', 0) + 1, courseInfo.getNumber().lastIndexOf('-')))//position of second '-' if exist
+                    .addQueryParameter("validterm", sharedPreferences.getString(getString(R.string.pref_key_term), null))//default value should't be used based on design
+                    .addQueryParameter("crn", courseInfo.getCrn()).build();
+            Intent intent = new Intent(MainActivity.this, CourseActivity.class);
+            Bundle bundle = new Bundle();
+            bundle.putString("URL", urlForCourse.toString());
+            bundle.putParcelable("CourseInfo", courseInfo);
+            intent.putExtra("bundle", bundle);
+            startActivity(intent);
         });
 
         DrawerLayout drawer = findViewById(R.id.drawer_layout);
@@ -228,7 +229,6 @@ public class MainActivity extends AppCompatActivity
             }
             String defaultTerm = validTermValues[0];//set the latest valid term as the default term
 
-            //todo support multiple subjCode by picking results from all results
             String major = "ALL";
             if(subjCode.size() == 1) major = subjCode.iterator().next();
             RequestBody requestBody = new FormBody.Builder()
@@ -257,28 +257,35 @@ public class MainActivity extends AppCompatActivity
                             course.text().startsWith("LAB"))||
                             course.text().startsWith("SEM")){*///exclude separate exam/lect/lab/sem info elements
                     if (courseElement.children().size() == 13) {//only include whole information elements
-                        Course course = new CourseBuilder().buildCourse();
-                        course.setCrn(courseElement.child(0).text());//course crn
-                        course.setNumber(courseElement.child(1).text());//course number
-                        course.setTitle(courseElement.child(2).text());//course title
-                        course.setAvailableSeats(courseElement.child(12).text());//course available seats
+                        CourseBuilder courseBuilder = new CourseBuilder();
+                        courseBuilder.setCrn(courseElement.child(0).text())
+                                .setNumber(courseElement.child(1).text())
+                                .setTitle(courseElement.child(2).child(0).ownText())/*remove the requirements in <br> tag*/
+                                .setAvailableSeats(courseElement.child(12).text());
                         //set other stuff for detail display later
-                        course.addType(courseElement.child(4).text());
-                        course.addDays(courseElement.child(5).text());
-                        course.addTime(courseElement.child(6).text());
-                        course.addLocation(courseElement.child(7).text());
-                        course.addPeriod(courseElement.child(8).text());
-                        course.setInstructor(courseElement.child(9).text());
-                        int tempIndex = i;
-                        while (courseList.get(tempIndex).children().size() == 12){//add additional exam/lect/lab/sem info elements
-                            course.addType(courseElement.child(3).text());
-                            course.addDays(courseElement.child(4).text());
-                            course.addTime(courseElement.child(5).text());
-                            course.addLocation(courseElement.child(6).text());
-                            course.addPeriod(courseElement.child(7).text());
+                        courseBuilder.addType(courseElement.child(4).text())
+                                .addDays(courseElement.child(5).text())
+                                .addTime(courseElement.child(6).text())
+                                .addLocation(courseElement.child(7).text())
+                                .addPeriod(courseElement.child(8).text())
+                                .setInstructor(courseElement.child(9).text());
+
+                        //add additional exam/lect/lab/sem info elements
+                        int tempIndex = i + 1;
+                        while (courseList.size() > tempIndex && courseList.get(tempIndex).children().size() == 12){
+                            Element additionalElement = courseList.get(tempIndex);
+                            Log.i(TAG, "Added additional info: " + Arrays.toString(additionalElement.children().eachText().toArray()));
+                            courseBuilder.addType(additionalElement.child(3).text())
+                                    .addDays(additionalElement.child(4).text())
+                                    .addTime(additionalElement.child(5).text())
+                                    .addLocation(additionalElement.child(6).text())
+                                    .addPeriod(additionalElement.child(7).text());
+                            i = tempIndex;//skip the additional classes's elements in the for loop for more efficiency
                             tempIndex++;
                         }
-                        if(tempIndex > i) i = tempIndex;//skip the added ones
+
+                        //build course and filter out not chosen ones
+                        Course course = courseBuilder.buildCourse();
                         if (subjCode.size() > 1) {//multiple subject code support
                             //check if course number starts with one of the wanted subject codes
                             if (subjCode.contains(course.getMajor())) {
@@ -295,11 +302,16 @@ public class MainActivity extends AppCompatActivity
             } catch (IOException e) {
                 Log.e(TAG, e.getMessage());
                 e.printStackTrace();
-                Toast.makeText(activity, activity.getString(R.string.toast_internet_error), Toast.LENGTH_SHORT).show();
+                activity.runOnUiThread(() -> Toast.makeText(activity, activity.getString(R.string.toast_internet_error), Toast.LENGTH_SHORT).show());
                 return catalog;//empty
+            } catch (Exception e) {
+                e.printStackTrace();
+                activity.runOnUiThread(() -> Toast.makeText(activity, activity.getString(R.string.toast_unknown_error), Toast.LENGTH_SHORT).show());
+                return catalog;
             }
-
         }
+
+        //todo internet error
 
         @Override
         protected void onPostExecute(List<Course> list) {
