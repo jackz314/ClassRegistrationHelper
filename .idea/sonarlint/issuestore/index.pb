@@ -27,8 +27,6 @@ j
 .app/src/main/res/drawable/ic_settings_24dp.xml,e\7\e7d031c56f850ed40741347d44199c24a543cf34
 X
 (app/src/main/res/layout/app_bar_main.xml,6\f\6f97cd8a191d695dc0396291b7e88ceff15e43bb
-X
-(app/src/main/res/layout/content_main.xml,7\c\7c023c74a9bce7eb3587d0708a1c0350f6266748
 ^
 .app/src/main/res/menu/activity_main_drawer.xml,a\8\a874acbd348e069027d5c3df7eceb1a0bba28be9
 U
@@ -69,3 +67,13 @@ _
 /app/src/main/res/drawable/ic_web_black_24dp.xml,5\5\55766aa92a37c88a5764a56e23704fe1ea07d48c
 R
 "app/src/main/res/values/styles.xml,f\7\f79cc2688e29fcbc286fda14ae07b27c9e83690f
+
+Oapp/src/main/java/com/jackz314/classregistrationhelper/CheckCoursesService.java,9\9\99bbec6f4c8a65623e4146c5037df6d24a074d02
+{
+Kapp/src/main/java/com/jackz314/classregistrationhelper/CatalogFragment.java,7\7\77bef7d5c3754b4e44c83fcea9e949ed95032286
+{
+Kapp/src/main/java/com/jackz314/classregistrationhelper/TabPagerAdapter.java,f\3\f3e944e268e3814f63a341a9a005a8e8f9429eb8
+y
+Iapp/src/main/java/com/jackz314/classregistrationhelper/LoginActivity.java,0\f\0faefe0e64b7401f1401a2f683f2b8e8b9b1983b
+}
+Mapp/src/main/java/com/jackz314/classregistrationhelper/MyCoursesFragment.java,0\d\0d95dae7bba47ade47636506aa7b8c45e1522849

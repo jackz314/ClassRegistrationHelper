@@ -1,6 +1,6 @@
 
-‰ squid:ForLoopCounterChangedCheck"XRefactor the code in order to not assign to this loop counter from within the loop body.(ååÙ8èÚ°Õò,
-nsquid:S3776"RRefactor this method to reduce its Cognitive Complexity from 32 to the 15 allowed.(åÓ÷„8èÚ°Õò,
-Fsquid:S00108")Either remove or fill this block of code.(¼ñ­ê8èÚ°Õò,
-Ksquid:S00108")Either remove or fill this block of code.(»ƒ ™şÿÿÿÿ8èÚ°Õò,
-Ksquid:S00108")Either remove or fill this block of code.(Õó³÷úÿÿÿÿ8èÚ°Õò,
+Dsquid:S1185"(Remove this method to simply inherit it.(Ù«µ§8ª¬™çô,
+Ksquid:S00108")Either remove or fill this block of code.(Õó³÷úÿÿÿÿ8ª¬™çô,
+Ksquid:S00108")Either remove or fill this block of code.(»ƒ ™şÿÿÿÿ8ª¬™çô,
+Fsquid:S00108")Either remove or fill this block of code.(¼ñ­ê8ª¬™çô,
+¢squid:S1186"€Add a nested comment explaining why this method is empty, throw an UnsupportedOperationException or complete the implementation.(¸ÿüûùÿÿÿÿ8ª¬™çô,

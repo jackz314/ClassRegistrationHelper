@@ -32,6 +32,16 @@
             app:layout_constraintTop_toTopOf="parent" />
 
         <TextView
+            android:id="@+id/course_register_status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:visibility="gone"
+            android:layout_marginStart="8dp"
+            android:text="Registered on Nov 11, 2018"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/course_title" />
+
+        <TextView
             android:id="@+id/course_crn"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -169,7 +179,7 @@
             android:layout_marginTop="8dp"
             android:text="Basic Information"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/course_title" />
+            app:layout_constraintTop_toTopOf="@+id/barrier" />
 
         <TextView
             android:id="@+id/course_additional_class_label"
@@ -200,8 +210,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             app:barrierDirection="bottom"
-            app:constraint_referenced_ids="course_periods,course_additional_class_label,course_basic_label,course_taken_seats,course_additional_classes,course_time,course_location,course_instructor,course_days,course_total_seats,course_title,course_crn,course_available_seats,course_units,course_type,guideline"
-            />
+            app:constraint_referenced_ids="course_periods,course_additional_class_label,course_basic_label,course_taken_seats,course_additional_classes,course_time,course_location,course_instructor,course_days,course_total_seats,course_title,course_crn,course_available_seats,course_units,course_type,guideline" />
 
         <TextView
             android:id="@+id/course_restriction_label"
@@ -335,6 +344,14 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             app:layout_constraintGuide_begin="16dp" />
+
+        <android.support.constraint.Barrier
+            android:id="@+id/barrier"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:barrierDirection="bottom"
+            app:constraint_referenced_ids="course_register_status,course_title"
+            tools:layout_editor_absoluteY="522dp" />
 
     </android.support.constraint.ConstraintLayout>
 </android.support.v4.widget.NestedScrollView>

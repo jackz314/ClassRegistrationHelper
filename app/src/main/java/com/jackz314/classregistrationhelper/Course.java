@@ -34,6 +34,7 @@ public class Course implements Parcelable {
     private List<String> locations = null;
     private List<String> periods = null;
     private String instructor = null;
+    private String registerStatus = null;
     private Parcel in;
 
     Course(){
@@ -43,7 +44,7 @@ public class Course implements Parcelable {
     Course(String number, String title, String description, String crn, String totalSeats, String takenSeats, String availableSeats,
            List<String> levelRestrictionYes, List<String> levelRestrictionNo, List<String> majorRestrictionYes, List<String> majorRestrictionNo, List<String> additionalRestrictions, List<String> collegeRestriction,
            String prerequisite, String units, String fee, String major, String offeredTerms, List<String> types, List<String> days, List<String> times, List<String> locations,
-           List<String> periods, String instructor) {
+           List<String> periods, String instructor, String registerStatus) {
         this.setNumber(number);
         this.setTitle(title);
         this.setDescription(description);
@@ -68,6 +69,7 @@ public class Course implements Parcelable {
         this.setLocations(locations);
         this.setPeriods(periods);
         this.setInstructor(instructor);
+        this.setRegisterStatus(registerStatus);
     }
 
     //DO NOT CHANGE THIS WITHOUT CHANGING THE CORRESPONDING WRITING PART AS WELL
@@ -96,6 +98,7 @@ public class Course implements Parcelable {
         setLocations(in.createStringArrayList());
         setPeriods(in.createStringArrayList());
         setInstructor(in.readString());
+        setRegisterStatus(in.readString());
     }
 
     public static final Creator<Course> CREATOR = new Creator<Course>() {
@@ -423,6 +426,15 @@ public class Course implements Parcelable {
         this.instructor = instructor;
     }
 
+    public String getRegisterStatus() {
+        return registerStatus;
+    }
+
+    public void setRegisterStatus(String registerStatus){
+        //Log.i(TAG, "SET REGISTER STATUS for: " + getNumber() + ", STATUS: " + registerStatus);
+        this.registerStatus = registerStatus;
+    }
+
     public void setOfferedTerms(String offeredTerms) {
         this.offeredTerms = offeredTerms;
     }
@@ -668,7 +680,8 @@ public class Course implements Parcelable {
                 .setTimes(getTimes())
                 .setLocations(getLocations())
                 .setPeriods(getPeriods())
-                .setInstructor(getInstructor());
+                .setInstructor(getInstructor())
+                .setRegisterStatus(getRegisterStatus());
         return courseBuilder;
     }
 
@@ -689,6 +702,7 @@ public class Course implements Parcelable {
                 ", offeredTerms='" + getOfferedTerms() + '\n' +
                 ", additionalInfo='" + getAdditionalRestrictionsString() + '\n' +
                 ", instructor='" + getInstructor() + '\n' +
+                ", registerStatus='" + getRegisterStatus() + '\n' +
                 '}';
     }
 
@@ -726,6 +740,7 @@ public class Course implements Parcelable {
         parcel.writeStringList(getLocations());
         parcel.writeStringList(getPeriods());
         parcel.writeString(getInstructor());
+        parcel.writeString(getRegisterStatus());
     }
 
 }

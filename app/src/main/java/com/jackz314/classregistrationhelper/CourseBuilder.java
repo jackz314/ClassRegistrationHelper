@@ -1,7 +1,5 @@
 package com.jackz314.classregistrationhelper;
 
-import android.util.Log;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -31,6 +29,7 @@ public class CourseBuilder {
     private List<String> locations = null;
     private List<String> periods = null;
     private String instructor = null;
+    private String registerStatus = null;
 
     public CourseBuilder setNumber(String number) {
         this.number = number;
@@ -145,7 +144,7 @@ public class CourseBuilder {
     public CourseBuilder addType(String type){
         if(types != null){
             types.add(type);
-            Log.i(TAG, String.valueOf(types.size()));
+            //Log.i(TAG, String.valueOf(types.size()));
         }else {//initialize types
             List<String> temp = new ArrayList<>();
             temp.add(type);
@@ -223,8 +222,13 @@ public class CourseBuilder {
         return this;
     }
 
+    public CourseBuilder setRegisterStatus(String registerStatus){
+        this.registerStatus = registerStatus;
+        return this;
+    }
+
     public Course buildCourse() {
         //Log.i(TAG, "Course Built");
-        return new Course(number, title, description, crn, totalSeats, takenSeats, availableSeats, levelRestrictionYes, levelRestrictionNo, majorRestrictionYes, majorRestrictionNo, additionalRestrictions, collegeRestriction, prerequisite, units, fee, major, offeredTerms, types, days, times, locations, periods, instructor);
+        return new Course(number, title, description, crn, totalSeats, takenSeats, availableSeats, levelRestrictionYes, levelRestrictionNo, majorRestrictionYes, majorRestrictionNo, additionalRestrictions, collegeRestriction, prerequisite, units, fee, major, offeredTerms, types, days, times, locations, periods, instructor, registerStatus);
     }
 }

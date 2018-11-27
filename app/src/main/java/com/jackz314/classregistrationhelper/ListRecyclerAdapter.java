@@ -14,8 +14,8 @@ import android.widget.Filter;
 import android.widget.Filterable;
 import android.widget.TextView;
 
-import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedList;
 import java.util.List;
 
 import static android.graphics.Typeface.BOLD;
@@ -27,16 +27,7 @@ class ListRecyclerAdapter extends RecyclerView.Adapter<ListRecyclerAdapter.ListR
    private String query = null;
    private static final String TAG = "ListRecyclerAdapter";
 
-    /**
-     * Creates new List Recycler Adapter
-     *
-     * @param list originalList with each element being an array
-     *                  array pos 0: course number
-     *                  array pos 1: course description/title
-     *                  array pos 2: course crn number
-     *                  array pos 3: course available seats count
-     */
-    ListRecyclerAdapter(List<Course> list){
+   ListRecyclerAdapter(List<Course> list){
        originalList = list;
        filteredList = list;
    }
@@ -96,38 +87,36 @@ class ListRecyclerAdapter extends RecyclerView.Adapter<ListRecyclerAdapter.ListR
                         startPos = crnStr.indexOf(query,endPos);
                     }
                 }
-                holder.courseNumberTxt.setText(classNumber);
-                holder.courseDescriptionTxt.setText(classDescription);
-                holder.courseCrnTxt.setText(crn);
-                holder.courseAvailableSeatsTxt.setText(availableSeats);
-            }else {
-                holder.courseNumberTxt.setText(classNumber);
-                holder.courseDescriptionTxt.setText(classDescription);
-                holder.courseCrnTxt.setText(crn);
-                holder.courseAvailableSeatsTxt.setText(availableSeats);
             }
+            holder.courseNumberTxt.setText(classNumber);
+            holder.courseDescriptionTxt.setText(classDescription);
+            holder.courseCrnTxt.setText(crn);
+            holder.courseAvailableSeatsTxt.setText(availableSeats);
 
+            String registerTime = filteredList.get(position).getRegisterStatus();
+            if(registerTime != null && !registerTime.isEmpty()){
+                Log.i(TAG, "Registered course: " + classNumber);
+                holder.registeredTimeTxt.setText(registerTime);
+                holder.registeredTimeTxt.setVisibility(View.VISIBLE);
+            }
         }
     }
 
    static class ListRecyclerViewHolder extends RecyclerView.ViewHolder{
-       TextView courseNumberTxt, courseDescriptionTxt, courseCrnTxt, courseAvailableSeatsTxt;
+       TextView courseNumberTxt, courseDescriptionTxt, courseCrnTxt, courseAvailableSeatsTxt, registeredTimeTxt;
        ListRecyclerViewHolder(View itemView) {
            super(itemView);
            courseNumberTxt = itemView.findViewById(R.id.class_number_txt);
            courseDescriptionTxt = itemView.findViewById(R.id.class_description_txt);
            courseCrnTxt = itemView.findViewById(R.id.crn_num_txt);
            courseAvailableSeatsTxt = itemView.findViewById(R.id.avaliable_seat_count_txt);
+           registeredTimeTxt = itemView.findViewById(R.id.registered_time_txt);
        }
    }
 
    @Override
    public int getItemCount() {
        return filteredList.size();
-   }
-
-   public int getFilteredItemCount(){
-        return filteredList.size();
    }
 
    @Override
@@ -139,7 +128,7 @@ class ListRecyclerAdapter extends RecyclerView.Adapter<ListRecyclerAdapter.ListR
                query = constraint.toString();
                List<Course> arrTemp;
                if (query.isEmpty()) {
-                   arrTemp = new ArrayList<>(originalList);
+                   arrTemp = new LinkedList<>(originalList);
                } else {
                    arrTemp = getFilteredList(query);
                }
@@ -160,9 +149,13 @@ class ListRecyclerAdapter extends RecyclerView.Adapter<ListRecyclerAdapter.ListR
        };
    }
 
+   public List<Course> getOriginalList(){
+       return originalList;
+   }
+
    private List<Course> getFilteredList(String query){
        //filteredList.clear();//clear previous stuff in it
-       List<Course> results = new ArrayList<>();
+       List<Course> results = new LinkedList<>();
        for (Course classInfo : originalList) {
            //matching...
            if (classInfo.getNumber().toLowerCase().contains(query.toLowerCase()) || //course number
@@ -174,14 +167,17 @@ class ListRecyclerAdapter extends RecyclerView.Adapter<ListRecyclerAdapter.ListR
        return results;
    }
 
+   String getQuery(){
+       return query;
+   }
+
    Course getItemAtPos(int position){
        return filteredList.get(position);
    }
 
-   void swapNewDataSet(List<Course> newList)
-   {
+   void swapNewDataSet(List<Course> newList) {
        if(newList == null || newList.isEmpty()) return;
-       if (originalList != null && !originalList.isEmpty()) originalList.clear();
+       //if (originalList != null && !originalList.isEmpty()) originalList.clear();
        originalList = newList;
        filteredList = newList;
        notifyDataSetChanged();

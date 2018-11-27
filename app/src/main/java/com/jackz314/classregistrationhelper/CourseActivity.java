@@ -1,15 +1,19 @@
 package com.jackz314.classregistrationhelper;
 
+import android.annotation.SuppressLint;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Point;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.design.widget.AppBarLayout;
 import android.support.design.widget.CollapsingToolbarLayout;
 import android.support.design.widget.CoordinatorLayout;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.Display;
@@ -29,11 +33,17 @@ import org.jsoup.select.Elements;
 
 import java.io.IOException;
 import java.lang.ref.WeakReference;
+import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
+
+import static com.jackz314.classregistrationhelper.CatalogFragment.COURSE_ADD_TO_LIST_CODE;
+import static com.jackz314.classregistrationhelper.CatalogFragment.COURSE_ADD_TO_LIST_CRN_KEY;
 
 public class CourseActivity extends AppCompatActivity {
 
@@ -41,17 +51,17 @@ public class CourseActivity extends AppCompatActivity {
 
     private static String urlForCourse;
     private static final String TAG = "CourseActivity";
+
+    private enum CourseListStatus{
+        NOT_ON_LIST, ON_LIST, REGISTERED
+    }
+    private boolean needToUpdateCatalog = false;
+    private CourseListStatus courseListStatus = CourseListStatus.NOT_ON_LIST;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_course);
         toolbarLayout = findViewById(R.id.course_toolbar_layout);
-        FloatingActionButton fab = findViewById(R.id.fab_add_to_list);
-        fab.setOnClickListener(view -> {
-            addToList();
-            Snackbar.make(view, "Added to tracking list", Snackbar.LENGTH_LONG)
-                .setAction("Undo", view1 -> undoAddToList()).show();
-        });
 
         urlForCourse = getIntent().getBundleExtra("bundle").getString("URL");
         if(urlForCourse == null) return;
@@ -59,7 +69,7 @@ public class CourseActivity extends AppCompatActivity {
         toolbarLayout.setTitle("Loading...");
         new GetCourseDetailTask(this).execute();
         setSupportActionBar(findViewById(R.id.course_toolbar));
-        getSupportActionBar().setDisplayShowHomeEnabled(true);
+        Objects.requireNonNull(getSupportActionBar()).setDisplayShowHomeEnabled(true);
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
     }
 
@@ -88,6 +98,12 @@ public class CourseActivity extends AppCompatActivity {
                 }
                 Course course = activity.getIntent().getBundleExtra("bundle").getParcelable("CourseInfo");
                 //Log.i(TAG, course.getMajor() + course.getDescription() + " HHHHAAAA");
+                if(course == null) {
+                    //something wrong with the intent to this activity, can't proceed, abort, notify user, and finish activity
+                    Toast.makeText(activity, activity.getString(R.string.toast_unknown_error), Toast.LENGTH_SHORT).show();
+                    activity.finish();
+                    return null;
+                }
                 CourseBuilder courseBuilder = course.newBuilder();
                 Document document = Jsoup.parse(htmlResponse);
                 Element courseElements = document.select("[class=datadisplaytable]").first().child(0);
@@ -218,16 +234,20 @@ public class CourseActivity extends AppCompatActivity {
         protected void onPostExecute(String photoUrl) {
             if(photoUrl != null && !photoUrl.isEmpty() && !photoUrl.contains("sealofucmerced")){//has actual profile picture
                 CourseActivity activity = activityReference.get();
-                ImageView profilePictureView = activity.toolbarLayout.findViewById(R.id.profile_picture);
-                Glide.with(activity)
-                        .load(photoUrl)
-                        .into(profilePictureView);
-                Display display = activity.getWindowManager().getDefaultDisplay();
-                Point size = new Point();
-                display.getSize(size);
-                AppBarLayout appBarLayout = activity.findViewById(R.id.course_app_bar);
-                appBarLayout.getLayoutParams().height = size.y/3;
+                if(activity != null){
+                    ImageView profilePictureView = activity.toolbarLayout.findViewById(R.id.profile_picture);
+                    try{
+                        Glide.with(activity)
+                                .load(photoUrl)
+                                .into(profilePictureView);
+                    }catch (Exception ignored){}
 
+                    Display display = activity.getWindowManager().getDefaultDisplay();
+                    Point size = new Point();
+                    display.getSize(size);
+                    AppBarLayout appBarLayout = activity.findViewById(R.id.course_app_bar);
+                    appBarLayout.getLayoutParams().height = size.y/3;
+                }
             }
             super.onPostExecute(photoUrl);
         }
@@ -237,6 +257,7 @@ public class CourseActivity extends AppCompatActivity {
         new GetInstructorPhoto(this).execute(course.getInstructor());
         toolbarLayout.setTitle(course.getNumber());
         TextView titleText = findViewById(R.id.course_title);
+        TextView registerStatusText = findViewById(R.id.course_register_status);
         TextView crnText = findViewById(R.id.course_crn);
         TextView instructorText = findViewById(R.id.course_instructor);
         TextView daysText = findViewById(R.id.course_days);
@@ -255,6 +276,8 @@ public class CourseActivity extends AppCompatActivity {
         TextView descriptionText = findViewById(R.id.course_description);
         TextView otherInfoText = findViewById(R.id.course_other_info);
 
+        FloatingActionButton courseFab = findViewById(R.id.fab_add_to_list);
+
         /*ConstraintLayout.LayoutParams zeroMarginParams = new ConstraintLayout.LayoutParams(//param setting for gone views
                 ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
@@ -263,6 +286,73 @@ public class CourseActivity extends AppCompatActivity {
         boolean requireLabel1 = true, requireLabel2 = true, requireLabel3 = true;
 
         titleText.setText(course.getTitle());
+        String registerStatusStr = course.getRegisterStatus();
+        if(registerStatusStr != null){
+            registerStatusText.setVisibility(View.VISIBLE);
+            registerStatusText.setText(registerStatusStr);
+            courseListStatus = CourseListStatus.ON_LIST;
+            courseFab.setImageResource(R.drawable.ic_add_to_list_done);
+            if(!registerStatusStr.equals(getString(R.string.register_status_on_my_list))){
+                courseListStatus = CourseListStatus.REGISTERED;
+                courseFab.setImageResource(R.drawable.ic_register_done);
+            }
+        }
+        courseFab.setOnClickListener(view -> {
+            switch (courseListStatus) {
+                case ON_LIST:
+                    removeFromList();
+                    registerStatusText.setVisibility(View.GONE);
+                    courseFab.setImageResource(R.drawable.ic_add_to_list);
+                    courseListStatus = CourseListStatus.NOT_ON_LIST;
+                    Snackbar.make(view, "Removed from my list", Snackbar.LENGTH_LONG)
+                            .setAction("Undo", view1 -> {
+                                registerStatusText.setVisibility(View.VISIBLE);
+                                courseFab.setImageResource(R.drawable.ic_add_to_list_done);
+                                courseListStatus = CourseListStatus.ON_LIST;
+                                addToList();
+                            }).show();
+                    break;
+                case NOT_ON_LIST: //not on my list
+                    addToList();
+                    registerStatusText.setVisibility(View.VISIBLE);
+                    registerStatusText.setText(R.string.register_status_on_my_list);
+                    courseFab.setImageResource(R.drawable.ic_add_to_list_done);
+                    courseListStatus = CourseListStatus.ON_LIST;
+                    Snackbar.make(view, "Added to my list", Snackbar.LENGTH_LONG)
+                            .setAction("Undo", view1 -> {
+                                registerStatusText.setVisibility(View.GONE);
+                                courseFab.setImageResource(R.drawable.ic_add_to_list);
+                                undoAddToList();
+                                courseListStatus = CourseListStatus.NOT_ON_LIST;
+                            }).show();
+                    break;
+                case REGISTERED: //registered class
+                    courseFab.setImageResource(R.drawable.ic_register_done);
+                    new AlertDialog.Builder(getApplicationContext())
+                            .setTitle("Are you sure?")
+                            .setMessage("Do you really want to drop this class?")
+                            .setPositiveButton("Yes", (dialogInterface, i) -> {
+                                //todo drop class
+                                Snackbar.make(view, "Class dropped", Snackbar.LENGTH_LONG)
+                                        .setAction("Undo", view1 -> {
+                                            //todo register class
+                                        }).show();
+                            })
+                            .setNegativeButton("No", (dialogInterface, i) -> {
+                                ///todo register class
+                                Snackbar.make(view, "Class dropped", Snackbar.LENGTH_LONG)
+                                        .setAction("Undo", view1 -> {
+                                            //todo drop class
+                                        }).show();
+                            }).show();
+                    break;
+            }
+
+        });
+        courseFab.setOnLongClickListener(view1 -> {
+            //todo register class
+            return false;
+        });
 
         String crnStr = "CRN: " + course.getCrn();
         crnText.setText(crnStr);
@@ -359,21 +449,99 @@ public class CourseActivity extends AppCompatActivity {
         //toolbarLayout.setExpandedTitleTextAppearance(R.style.ExpandedAppBar);
     }
 
+    @SuppressLint("ApplySharedPref")//to make sure that undo doesn't delete unnecessary stuff
     void addToList(){
+        needToUpdateCatalog = !needToUpdateCatalog;
+        int startPos = urlForCourse.indexOf('?');
+        String addToListStr = urlForCourse.substring(startPos);
 
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+        String myList = sharedPreferences.getString(getString(R.string.my_course_selection_list), null);
+        if(myList == null){
+            //first time
+            myList = addToListStr;
+        }else {
+            myList = myList + "-" + addToListStr;
+        }
+        sharedPreferences.edit().putString(getString(R.string.my_course_selection_list), myList).commit();
+
+        String courseCrn = urlForCourse.substring(urlForCourse.indexOf("crn=") + 4);
+        Set<String> crnSet = sharedPreferences.getStringSet(getString(R.string.my_selection_crn_set), null);
+        if(crnSet == null) crnSet = Collections.singleton(courseCrn);//first one
+        else crnSet.add(courseCrn);//add to set
+        sharedPreferences.edit().putStringSet(getString(R.string.my_selection_crn_set), crnSet).commit();
+        if(needToUpdateCatalog){
+            Intent intent = new Intent();
+            intent.putExtra(COURSE_ADD_TO_LIST_CRN_KEY, courseCrn);
+            setResult(COURSE_ADD_TO_LIST_CODE, intent);
+        }
     }
 
     void undoAddToList(){
+        needToUpdateCatalog = !needToUpdateCatalog;
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+        String myList = sharedPreferences.getString(getString(R.string.my_course_selection_list), null);
+        if(myList == null) return;
+        int startPos = myList.lastIndexOf('-');
+        if(startPos == -1){
+            myList = null;
+        }else {
+            myList = myList.substring(0, Math.max(myList.length(), startPos));
+        }
+        sharedPreferences.edit().putString(getString(R.string.my_course_selection_list), myList).apply();
 
+        String courseCrn = urlForCourse.substring(urlForCourse.indexOf("crn=") + 4);
+        Set<String> crnSet = sharedPreferences.getStringSet(getString(R.string.my_selection_crn_set), null);
+        if(crnSet == null) return;//not added yet, error
+        else crnSet.remove(courseCrn);//remove from set
+        sharedPreferences.edit().putStringSet(getString(R.string.my_selection_crn_set), crnSet).apply();
+        if(needToUpdateCatalog){
+            Intent intent = new Intent();
+            intent.putExtra(COURSE_ADD_TO_LIST_CRN_KEY, courseCrn);
+            setResult(COURSE_ADD_TO_LIST_CODE, intent);
+        }else {
+            setResult(RESULT_CANCELED);
+        }
     }
 
+    void removeFromList(){
+        needToUpdateCatalog = !needToUpdateCatalog;
+        String courseCrn = urlForCourse.substring(urlForCourse.indexOf("crn=") + 4);
+
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+        String myList = sharedPreferences.getString(getString(R.string.my_course_selection_list), null);
+        if(myList == null) return;
+        StringBuilder myListBuilder = new StringBuilder(myList);
+        int endPos = myListBuilder.indexOf(courseCrn);
+        if(endPos == -1) return;//not on list, shouldn't happen
+        int startPos = myListBuilder.lastIndexOf("-", endPos);
+        if(startPos == -1){
+            myList = null;
+        }else {
+            myListBuilder.delete(startPos, endPos);
+            myList = myListBuilder.toString();
+        }
+        sharedPreferences.edit().putString(getString(R.string.my_course_selection_list), myList).apply();
+
+        Set<String> crnSet = sharedPreferences.getStringSet(getString(R.string.my_selection_crn_set), null);
+        if(crnSet == null) return;//nothing added yet, error
+        else crnSet.remove(courseCrn);//remove from set
+        sharedPreferences.edit().putStringSet(getString(R.string.my_selection_crn_set), crnSet).apply();
+        if(needToUpdateCatalog){
+            Intent intent = new Intent();
+            intent.putExtra(COURSE_ADD_TO_LIST_CRN_KEY, courseCrn);
+            setResult(COURSE_ADD_TO_LIST_CODE, intent);
+        }else {
+            setResult(RESULT_CANCELED);
+        }
+    }
     //set CollapsingToolbarLayout height
     private void setAppBarOffset(int offsetPx){
         AppBarLayout appBarLayout = findViewById(R.id.course_app_bar);
         CoordinatorLayout coordinatorLayout = findViewById(R.id.course_coordinator_layout);
         CoordinatorLayout.LayoutParams params = (CoordinatorLayout.LayoutParams) appBarLayout.getLayoutParams();
         AppBarLayout.Behavior behavior = (AppBarLayout.Behavior) params.getBehavior();
-        behavior.onNestedPreScroll(coordinatorLayout, appBarLayout, null, 0, offsetPx, new int[]{0, 0}, 0);
+        Objects.requireNonNull(behavior).onNestedPreScroll(coordinatorLayout, appBarLayout, null, 0, offsetPx, new int[]{0, 0}, 0);
         appBarLayout.post(() -> {
             setAppBarOffset(offsetPx);
         });

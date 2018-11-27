@@ -54,6 +54,6 @@
         android:layout_margin="@dimen/fab_margin"
         app:layout_anchor="@id/course_app_bar"
         app:layout_anchorGravity="bottom|end"
-        app:srcCompat="@drawable/ic_playlist_add_black_24dp" />
+        app:srcCompat="@drawable/ic_add_to_list" />
 
 </android.support.design.widget.CoordinatorLayout>
