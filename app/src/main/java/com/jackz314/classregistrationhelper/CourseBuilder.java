@@ -159,6 +159,7 @@ public class CourseBuilder {
     }
 
     public CourseBuilder addDays(String days){
+        if(days.trim().isEmpty()) days = "TBD";
         if(this.days!= null){
             this.days.add(days);
         }else {//initialize types
@@ -191,6 +192,9 @@ public class CourseBuilder {
     }
 
     public CourseBuilder addLocation(String location){
+        if(location.trim().isEmpty()){
+            location = "TBD";
+        }
         if(locations != null){
             locations.add(location);
         }else {//initialize types

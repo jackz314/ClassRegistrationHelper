@@ -327,6 +327,7 @@ public class Course implements Parcelable {
 
     public String getDaysLiteral(int index){
         String days = getDays().get(index);
+        if(days.equals("TBD")) return "TBD";
         days = days.replace("M", "Mon ")
                 .replace("T", "Tue ")
                 .replace("W", "Wed ")
@@ -373,7 +374,9 @@ public class Course implements Parcelable {
     }
 
     public List<String> getPeriods() {
-        Log.i(TAG, "Periods: " + Arrays.toString(periods.toArray()));
+        if (periods != null) {
+            Log.i(TAG, "Periods: " + Arrays.toString(periods.toArray()));
+        }
         return periods;
     }
 
@@ -431,7 +434,9 @@ public class Course implements Parcelable {
     }
 
     public void setRegisterStatus(String registerStatus){
-        //Log.i(TAG, "SET REGISTER STATUS for: " + getNumber() + ", STATUS: " + registerStatus);
+        /*if(registerStatus != null){
+            Log.i(TAG, "SET REGISTER STATUS for: " + getNumber() + ": " + getCrn() + ", STATUS: " + registerStatus);
+        }*/
         this.registerStatus = registerStatus;
     }
 

@@ -17,6 +17,7 @@ import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.Display;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -42,29 +43,37 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 
-import static com.jackz314.classregistrationhelper.CatalogFragment.COURSE_ADD_TO_LIST_CODE;
-import static com.jackz314.classregistrationhelper.CatalogFragment.COURSE_ADD_TO_LIST_CRN_KEY;
+import static com.jackz314.classregistrationhelper.CatalogFragment.COURSE_CHANGE_TO_LIST_CODE;
+import static com.jackz314.classregistrationhelper.CatalogFragment.COURSE_LIST_CHANGE_CRN_KEY;
+import static com.jackz314.classregistrationhelper.CatalogFragment.COURSE_REGISTER_STATUS_CHANGED;
+import static com.jackz314.classregistrationhelper.MyCoursesFragment.registerCourses;
 
 public class CourseActivity extends AppCompatActivity {
 
     CollapsingToolbarLayout toolbarLayout;
 
     private static String urlForCourse;
+    private String courseCrn;
     private static final String TAG = "CourseActivity";
 
     private enum CourseListStatus{
         NOT_ON_LIST, ON_LIST, REGISTERED
     }
-    private boolean needToUpdateCatalog = false;
+    private boolean selectionNeedToUpdateCatalog = false, registerNeedToUpdateCatalog = false;
     private CourseListStatus courseListStatus = CourseListStatus.NOT_ON_LIST;
+    private TextView registerStatusText;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_course);
         toolbarLayout = findViewById(R.id.course_toolbar_layout);
+        registerStatusText = findViewById(R.id.course_register_status);
 
         urlForCourse = getIntent().getBundleExtra("bundle").getString("URL");
         if(urlForCourse == null) return;
+        courseCrn = urlForCourse.substring(urlForCourse.indexOf("crn=") + 4);
+
         //tempText.setOnClickListener(view -> startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(urlForCourse))));
         toolbarLayout.setTitle("Loading...");
         new GetCourseDetailTask(this).execute();
@@ -77,8 +86,8 @@ public class CourseActivity extends AppCompatActivity {
 
         private WeakReference<CourseActivity> activityReference;
 
-        GetCourseDetailTask(CourseActivity context){
-            activityReference = new WeakReference<>(context);
+        GetCourseDetailTask(CourseActivity activity){
+            activityReference = new WeakReference<>(activity);
         }
 
         @Override
@@ -97,7 +106,6 @@ public class CourseActivity extends AppCompatActivity {
                     return null;//empty
                 }
                 Course course = activity.getIntent().getBundleExtra("bundle").getParcelable("CourseInfo");
-                //Log.i(TAG, course.getMajor() + course.getDescription() + " HHHHAAAA");
                 if(course == null) {
                     //something wrong with the intent to this activity, can't proceed, abort, notify user, and finish activity
                     Toast.makeText(activity, activity.getString(R.string.toast_unknown_error), Toast.LENGTH_SHORT).show();
@@ -143,7 +151,7 @@ public class CourseActivity extends AppCompatActivity {
                         courseBuilder.setLevelRestrictionNo(restrictionElement.child(0).children().eachText()
                                 .subList(1, restrictionElement.child(0).children().size()));
                     }else if(identifier.contains("Prerequisites for this course")){
-                        //todo prerequisite structure is kind of messy, maybe deal with it later in a more organized way, for now, just get all the text
+                        //prerequisite structure is kind of messy, maybe deal with it later in a more organized way, for now, just get all the text
                         Element removeFirst = restrictionElement.child(0);
                         removeFirst.child(0).remove();
                         courseBuilder.setPrerequisite(removeFirst.text());
@@ -184,8 +192,8 @@ public class CourseActivity extends AppCompatActivity {
 
         private WeakReference<CourseActivity> activityReference;
 
-        GetInstructorPhoto(CourseActivity context){
-            activityReference = new WeakReference<>(context);
+        GetInstructorPhoto(CourseActivity activity){
+            activityReference = new WeakReference<>(activity);
         }
 
         @Override
@@ -196,13 +204,14 @@ public class CourseActivity extends AppCompatActivity {
                 return null;
             }
             CourseActivity activity = activityReference.get();
+            if(activity == null) return null;
             OkHttpClient client = new OkHttpClient();
             Request request = new Request.Builder()
                     .url(activity.getString(R.string.get_faculty_directory_url))
                     .build();
             try {
                 Response response = client.newCall(request).execute();
-                String htmlResponse = response.body().string();
+                String htmlResponse = response.body() != null ? response.body().string() : null;
                 if(htmlResponse == null || htmlResponse.isEmpty()) return null;//empty
                 Document document = Jsoup.parse(htmlResponse);
                 //select ones that contain instructor's last name
@@ -257,7 +266,6 @@ public class CourseActivity extends AppCompatActivity {
         new GetInstructorPhoto(this).execute(course.getInstructor());
         toolbarLayout.setTitle(course.getNumber());
         TextView titleText = findViewById(R.id.course_title);
-        TextView registerStatusText = findViewById(R.id.course_register_status);
         TextView crnText = findViewById(R.id.course_crn);
         TextView instructorText = findViewById(R.id.course_instructor);
         TextView daysText = findViewById(R.id.course_days);
@@ -328,30 +336,28 @@ public class CourseActivity extends AppCompatActivity {
                     break;
                 case REGISTERED: //registered class
                     courseFab.setImageResource(R.drawable.ic_register_done);
-                    new AlertDialog.Builder(getApplicationContext())
+                    new AlertDialog.Builder(this)
                             .setTitle("Are you sure?")
                             .setMessage("Do you really want to drop this class?")
                             .setPositiveButton("Yes", (dialogInterface, i) -> {
-                                //todo drop class
+                                dropCourse();
                                 Snackbar.make(view, "Class dropped", Snackbar.LENGTH_LONG)
                                         .setAction("Undo", view1 -> {
-                                            //todo register class
+                                            registerCourse();
                                         }).show();
                             })
                             .setNegativeButton("No", (dialogInterface, i) -> {
-                                ///todo register class
-                                Snackbar.make(view, "Class dropped", Snackbar.LENGTH_LONG)
-                                        .setAction("Undo", view1 -> {
-                                            //todo drop class
-                                        }).show();
+                                dialogInterface.dismiss();
                             }).show();
                     break;
             }
 
         });
         courseFab.setOnLongClickListener(view1 -> {
-            //todo register class
-            return false;
+            if(courseListStatus == CourseListStatus.NOT_ON_LIST || courseListStatus == CourseListStatus.ON_LIST){
+                registerCourse();
+            }//if already registered, do nothing
+            return true;
         });
 
         String crnStr = "CRN: " + course.getCrn();
@@ -451,7 +457,7 @@ public class CourseActivity extends AppCompatActivity {
 
     @SuppressLint("ApplySharedPref")//to make sure that undo doesn't delete unnecessary stuff
     void addToList(){
-        needToUpdateCatalog = !needToUpdateCatalog;
+        selectionNeedToUpdateCatalog = !selectionNeedToUpdateCatalog;
         int startPos = urlForCourse.indexOf('?');
         String addToListStr = urlForCourse.substring(startPos);
 
@@ -465,20 +471,23 @@ public class CourseActivity extends AppCompatActivity {
         }
         sharedPreferences.edit().putString(getString(R.string.my_course_selection_list), myList).commit();
 
-        String courseCrn = urlForCourse.substring(urlForCourse.indexOf("crn=") + 4);
         Set<String> crnSet = sharedPreferences.getStringSet(getString(R.string.my_selection_crn_set), null);
         if(crnSet == null) crnSet = Collections.singleton(courseCrn);//first one
         else crnSet.add(courseCrn);//add to set
+        Log.i(TAG, courseCrn + " added to crnSet");
+        /*for (String aCrnSet : crnSet) {
+            Log.i(TAG, aCrnSet + ",");
+        }*/
         sharedPreferences.edit().putStringSet(getString(R.string.my_selection_crn_set), crnSet).commit();
-        if(needToUpdateCatalog){
+        if(selectionNeedToUpdateCatalog){
             Intent intent = new Intent();
-            intent.putExtra(COURSE_ADD_TO_LIST_CRN_KEY, courseCrn);
-            setResult(COURSE_ADD_TO_LIST_CODE, intent);
+            intent.putExtra(COURSE_LIST_CHANGE_CRN_KEY, courseCrn);
+            setResult(COURSE_CHANGE_TO_LIST_CODE, intent);
         }
     }
 
     void undoAddToList(){
-        needToUpdateCatalog = !needToUpdateCatalog;
+        selectionNeedToUpdateCatalog = !selectionNeedToUpdateCatalog;
         SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
         String myList = sharedPreferences.getString(getString(R.string.my_course_selection_list), null);
         if(myList == null) return;
@@ -490,24 +499,21 @@ public class CourseActivity extends AppCompatActivity {
         }
         sharedPreferences.edit().putString(getString(R.string.my_course_selection_list), myList).apply();
 
-        String courseCrn = urlForCourse.substring(urlForCourse.indexOf("crn=") + 4);
         Set<String> crnSet = sharedPreferences.getStringSet(getString(R.string.my_selection_crn_set), null);
         if(crnSet == null) return;//not added yet, error
         else crnSet.remove(courseCrn);//remove from set
         sharedPreferences.edit().putStringSet(getString(R.string.my_selection_crn_set), crnSet).apply();
-        if(needToUpdateCatalog){
+        if(selectionNeedToUpdateCatalog){
             Intent intent = new Intent();
-            intent.putExtra(COURSE_ADD_TO_LIST_CRN_KEY, courseCrn);
-            setResult(COURSE_ADD_TO_LIST_CODE, intent);
+            intent.putExtra(COURSE_LIST_CHANGE_CRN_KEY, courseCrn);
+            setResult(COURSE_CHANGE_TO_LIST_CODE, intent);
         }else {
             setResult(RESULT_CANCELED);
         }
     }
 
     void removeFromList(){
-        needToUpdateCatalog = !needToUpdateCatalog;
-        String courseCrn = urlForCourse.substring(urlForCourse.indexOf("crn=") + 4);
-
+        selectionNeedToUpdateCatalog = !selectionNeedToUpdateCatalog;
         SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
         String myList = sharedPreferences.getString(getString(R.string.my_course_selection_list), null);
         if(myList == null) return;
@@ -515,6 +521,7 @@ public class CourseActivity extends AppCompatActivity {
         int endPos = myListBuilder.indexOf(courseCrn);
         if(endPos == -1) return;//not on list, shouldn't happen
         int startPos = myListBuilder.lastIndexOf("-", endPos);
+        endPos += courseCrn.length();
         if(startPos == -1){
             myList = null;
         }else {
@@ -527,14 +534,41 @@ public class CourseActivity extends AppCompatActivity {
         if(crnSet == null) return;//nothing added yet, error
         else crnSet.remove(courseCrn);//remove from set
         sharedPreferences.edit().putStringSet(getString(R.string.my_selection_crn_set), crnSet).apply();
-        if(needToUpdateCatalog){
+        if(selectionNeedToUpdateCatalog){
             Intent intent = new Intent();
-            intent.putExtra(COURSE_ADD_TO_LIST_CRN_KEY, courseCrn);
-            setResult(COURSE_ADD_TO_LIST_CODE, intent);
+            intent.putExtra(COURSE_LIST_CHANGE_CRN_KEY, courseCrn);
+            setResult(COURSE_CHANGE_TO_LIST_CODE, intent);
         }else {
             setResult(RESULT_CANCELED);
         }
     }
+
+    void addRegistrationStatus(){
+        registerStatusText.setVisibility(View.VISIBLE);
+        registerStatusText.setText("Registered Just now");
+        Intent intent = new Intent();
+        intent.putExtra(COURSE_LIST_CHANGE_CRN_KEY, courseCrn);
+        intent.putExtra(COURSE_REGISTER_STATUS_CHANGED, true);
+        setResult(COURSE_CHANGE_TO_LIST_CODE, intent);
+    }
+
+    void removeRegistrationStatus(){
+        registerStatusText.setVisibility(View.GONE);
+        Intent intent = new Intent();
+        intent.putExtra(COURSE_LIST_CHANGE_CRN_KEY, courseCrn);
+        intent.putExtra(COURSE_REGISTER_STATUS_CHANGED, true);
+        setResult(COURSE_CHANGE_TO_LIST_CODE, intent);
+    }
+
+    void registerCourse(){
+        new RegisterCourseTask(this).execute();
+
+    }
+
+    void dropCourse(){
+        new DropCourseTask(this).execute();
+    }
+
     //set CollapsingToolbarLayout height
     private void setAppBarOffset(int offsetPx){
         AppBarLayout appBarLayout = findViewById(R.id.course_app_bar);
@@ -545,6 +579,112 @@ public class CourseActivity extends AppCompatActivity {
         appBarLayout.post(() -> {
             setAppBarOffset(offsetPx);
         });
+    }
+
+    private static class RegisterCourseTask extends AsyncTask<Void, Void, List<String[]>>{
+
+        WeakReference<CourseActivity> activityWeakReference;
+        AlertDialog progressDialog;
+
+        RegisterCourseTask(CourseActivity activity){
+            activityWeakReference = new WeakReference<>(activity);
+        }
+
+        @Override
+        protected List<String[]> doInBackground(Void... voids) {
+            CourseActivity activity = activityWeakReference.get();
+
+            //progress dialog
+            LayoutInflater inflater = activity.getLayoutInflater();
+            View customView = inflater.inflate(R.layout.progress_dialog_layout, null);
+            TextView dialogMsg = customView.findViewById(R.id.loading_msg);
+            dialogMsg.setText("Registering...");
+            activity.runOnUiThread(() ->
+                    progressDialog = new AlertDialog.Builder(activity)
+                    .setView(customView)
+                    .setCancelable(false)
+                    .show());
+
+            return registerCourses(activity, activity.courseCrn);
+        }
+
+        @Override
+        protected void onPostExecute(List<String[]> errors) {
+            CourseActivity activity = activityWeakReference.get();
+            if(progressDialog != null){
+                progressDialog.dismiss();
+            }
+            AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(activity)
+                    .setCancelable(true)
+                    .setPositiveButton("OK", (dialogInterface, i) -> progressDialog.dismiss());
+            if(errors == null){
+                dialogBuilder.setMessage(activity.getString(R.string.toast_register_unknown_error));
+                //Toast.makeText(activity, activity.getString(R.string.toast_register_unknown_error), Toast.LENGTH_SHORT).show();
+            }else if(errors.isEmpty() || errors.get(0).length == 0){
+                dialogBuilder.setMessage(activity.getString(R.string.toast_register_success));
+                activity.removeFromList();
+                activity.addRegistrationStatus();
+                //Toast.makeText(activity, activity.getString(R.string.toast_register_success), Toast.LENGTH_SHORT).show();
+            }else{
+                String[] errorArr = errors.get(0);
+                if(errorArr[0].equals(activity.courseCrn)){
+                    dialogBuilder.setMessage(activity.getString(R.string.toast_register_error) + errorArr[1]);
+                    //Toast.makeText(activity, activity.getString(R.string.toast_register_error) + errorArr[1], Toast.LENGTH_LONG).show();
+                }else {
+                    dialogBuilder.setMessage(activity.getString(R.string.toast_register_unknown_error));
+                    Toast.makeText(activity, activity.getString(R.string.toast_register_unknown_error), Toast.LENGTH_SHORT).show();
+                }
+            }
+            activity.runOnUiThread(() -> progressDialog = dialogBuilder.show());
+        }
+    }
+
+    private static class DropCourseTask extends AsyncTask<Void, Void, Boolean>{
+
+        WeakReference<CourseActivity> activityWeakReference;
+        AlertDialog progressDialog;
+
+        DropCourseTask(CourseActivity activity){
+            activityWeakReference = new WeakReference<>(activity);
+        }
+
+        @Override
+        protected Boolean doInBackground(Void... voids) {
+            CourseActivity activity = activityWeakReference.get();
+
+            //progress dialog
+            LayoutInflater inflater = activity.getLayoutInflater();
+            View customView = inflater.inflate(R.layout.progress_dialog_layout, null);
+            TextView dialogMsg = customView.findViewById(R.id.loading_msg);
+            dialogMsg.setText("Dropping...");
+            activity.runOnUiThread(() ->
+                    progressDialog = new AlertDialog.Builder(activity)
+                            .setView(customView)
+                            .setCancelable(false)
+                            .show());
+
+            return MyCoursesFragment.dropCourse(activity, Collections.singletonList(activity.courseCrn));
+        }
+
+        @Override
+        protected void onPostExecute(Boolean dropSuccess) {
+            CourseActivity activity = activityWeakReference.get();
+            if(progressDialog != null){
+                progressDialog.dismiss();
+            }
+            AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(activity)
+                    .setCancelable(true)
+                    .setPositiveButton("OK", (dialogInterface, i) -> progressDialog.dismiss());
+            if(dropSuccess) {
+                dialogBuilder.setMessage(R.string.toast_drop_success);
+                activity.removeRegistrationStatus();
+                //Toast.makeText(activity, activity.getString(R.string.toast_drop_success), Toast.LENGTH_SHORT).show();
+            }else {
+                dialogBuilder.setMessage(R.string.toast_drop_error);
+                //Toast.makeText(activity, activity.getString(R.string.toast_drop_error), Toast.LENGTH_SHORT).show();
+            }
+            activity.runOnUiThread(() -> progressDialog = dialogBuilder.show());
+        }
     }
 
     @Override
@@ -560,10 +700,18 @@ public class CourseActivity extends AppCompatActivity {
         // automatically handle clicks on the Home/Up button, so long
         // as you specify a parent activity in AndroidManifest.xml.
         int id = item.getItemId();
-
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.action_goto_detail) {
-            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(urlForCourse)));
+        switch (id){
+            case R.id.action_goto_detail:
+                startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(urlForCourse)));
+                break;
+            case R.id.action_force_register:
+                registerCourse();
+                break;
+            case R.id.action_force_drop:
+                dropCourse();
+                break;
+            default:
+                break;
         }
 
         return super.onOptionsItemSelected(item);

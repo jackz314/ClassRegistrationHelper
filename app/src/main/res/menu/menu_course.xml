@@ -8,4 +8,12 @@
         android:orderInCategory="100"
         android:title="See Details"
         app:showAsAction="ifRoom|withText" />
+    <item
+        android:id="@+id/action_force_register"
+        android:title="Force Register Course"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/action_force_drop"
+        android:title="Force Drop Course"
+        app:showAsAction="never" />
 </menu>

@@ -9,6 +9,12 @@
 
     <string name="toast_internet_error">Can\'t connect to the internet, please try again later</string>
     <string name="toast_unknown_error">Encountered unknown error, please try again later</string>
+    <string name="toast_register_unknown_error">Encountered unknown error while registering the class, please try again later</string>
+    <string name="toast_register_error">"Registration failed: "</string>
+    <string name="toast_register_success">Course registered successfully!</string>
+    <string name="toast_drop_success">Course dropped successfully!</string>
+    <string name="toast_drop_error">Encountered unknown error while dropping the class, please try again later</string>
+
 
     <!-- URLs -->
     <!-- Course info URLs -->
@@ -38,7 +44,7 @@
 
     <!-- Course list storage stuff -->
     <string name="my_course_selection_list">my_course_selection_list</string>
-    <string name="my_selection_crn_set">my_courses_all_crn_set</string>
+    <string name="my_selection_crn_set">my_selection_crn_set</string>
     <string name="my_registered_crn_set">my_registered_crn_set</string>
     <string name="my_course_registered_status_list">my_course_registered_time_list</string>
 

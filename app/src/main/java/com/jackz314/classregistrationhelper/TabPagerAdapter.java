@@ -35,7 +35,7 @@ public class TabPagerAdapter extends FragmentPagerAdapter {
     public CharSequence getPageTitle(int pos) {
         switch (pos){
             case 0:
-                return "My List";
+                return "My Courses";
             case 1:
                 return "Catalog";
             default:

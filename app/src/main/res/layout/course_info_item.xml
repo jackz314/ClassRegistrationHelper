@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <android.support.constraint.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/linearLayout"
     android:layout_width="match_parent"
     android:layout_height="wrap_content">
@@ -78,12 +77,12 @@
                 android:id="@+id/registered_time_txt"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
                 android:layout_marginEnd="8dp"
                 android:text="Registered on Nov 1, 2018"
                 android:visibility="gone"
-                app:layout_constraintTop_toTopOf="parent"
-                card_view:layout_constraintEnd_toStartOf="@+id/crn_num_txt" />
+                card_view:layout_constraintBottom_toBottomOf="@+id/crn_num_txt"
+                card_view:layout_constraintEnd_toStartOf="@+id/crn_num_txt"
+                card_view:layout_constraintTop_toTopOf="@+id/crn_num_txt" />
         </android.support.constraint.ConstraintLayout>
 
 

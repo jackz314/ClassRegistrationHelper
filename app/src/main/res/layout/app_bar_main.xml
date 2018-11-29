@@ -34,7 +34,7 @@
                 android:id="@+id/my_list_tab"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="My List" />
+                android:text="My Courses" />
 
             <android.support.design.widget.TabItem
                 android:id="@+id/catalog_tab"

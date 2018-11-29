@@ -5,7 +5,6 @@ import android.app.SearchManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.net.Uri;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
@@ -58,6 +57,8 @@ public class MainActivity extends AppCompatActivity
     TabLayout tabLayout;
     TextView navHeaderTitle;
     TextView navHeaderSubtitle;
+    SearchView searchView;
+    boolean myCoursesLoadFinished = false, catalogLoadFinished = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -108,13 +109,14 @@ public class MainActivity extends AppCompatActivity
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.search_menu, menu);
         SearchManager searchManager = (SearchManager) getSystemService(Context.SEARCH_SERVICE);
-        SearchView searchView = (SearchView) menu.findItem(R.id.search_view).getActionView();
+        searchView = (SearchView) menu.findItem(R.id.search_view).getActionView();
         searchView.setSearchableInfo(Objects.requireNonNull(searchManager).getSearchableInfo(getComponentName()));
         searchView.setIconifiedByDefault(true);
         searchView.setMaxWidth(Integer.MAX_VALUE);
         LinearLayout searchBar = searchView.findViewById(R.id.search_bar);
         searchBar.setLayoutTransition(new LayoutTransition());
         searchView.setQueryHint("Search for classes...");
+        searchView.setClickable(false);
         searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
             @Override
             public boolean onQueryTextSubmit(String query) {
@@ -149,11 +151,15 @@ public class MainActivity extends AppCompatActivity
 
     public void query(String query) {
         if(viewPager.getCurrentItem() == 0){
-            Log.i(TAG, "QUERYING: " + query + " in my courses");
-            myCoursesFragment.query(query);
+            if(myCoursesLoadFinished){
+                Log.i(TAG, "QUERYING: " + query + " in my courses");
+                myCoursesFragment.query(query);
+            }
         }else if(viewPager.getCurrentItem() == 1){
-            Log.i(TAG, "QUERYING: " + query + " in catalog");
-            catalogFragment.query(query);
+            if(catalogLoadFinished){
+                Log.i(TAG, "QUERYING: " + query + " in catalog");
+                catalogFragment.query(query);
+            }
         }
     }
 
@@ -355,8 +361,23 @@ public class MainActivity extends AppCompatActivity
     }
 
     @Override
-    public void catalogOnFragmentInteraction(Uri uri) {
+    public void catalogOnLoadFinished() {
+        catalogFragment = (CatalogFragment)getSupportFragmentManager().getFragments().get(1);
+        catalogLoadFinished = true;
+    }
 
+    @Override
+    public void catalogOnListStatusChanged(boolean refreshAll) {
+        if(myCoursesFragment == null || !myCoursesFragment.isAdded()){
+            myCoursesFragment = (MyCoursesFragment)getSupportFragmentManager().getFragments().get(0);
+        }
+        if(myCoursesFragment != null){
+            if(refreshAll){
+                myCoursesFragment.refreshMyCoursesEntirely();
+            }else {
+                myCoursesFragment.refreshMyCoursesLocally();
+            }
+        }
     }
 
     @Override
@@ -368,15 +389,27 @@ public class MainActivity extends AppCompatActivity
     public void myCourseOnRegisterStatusChanged() {
         catalogFragment = (CatalogFragment)getSupportFragmentManager().getFragments().get(1);
         if(catalogFragment != null){
-            catalogFragment.refreshCatalogList();
+            catalogFragment.refreshCatalogListWithStatusChange();
+        }
+    }
+
+    @Override
+    public void myCourseOnListStatusChanged(String crn) {
+        catalogFragment = (CatalogFragment)getSupportFragmentManager().getFragments().get(1);
+        if(catalogFragment != null){
+            catalogFragment.refreshCatalogListWithStatusChange(crn);
         }
     }
 
     @Override
     public void myCourseOnLoadFinished() {
-        catalogFragment = (CatalogFragment)getSupportFragmentManager().getFragments().get(1);
+        myCoursesFragment = (MyCoursesFragment)getSupportFragmentManager().getFragments().get(0);
+        myCoursesLoadFinished = true;
+        if(catalogFragment == null){
+            catalogFragment = (CatalogFragment)getSupportFragmentManager().getFragments().get(1);
+        }
         if(catalogFragment != null){
-            catalogFragment.startTasks();
+            catalogFragment.startLoading();
         }
     }
 }

@@ -3,7 +3,6 @@ package com.jackz314.classregistrationhelper;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
@@ -59,9 +58,10 @@ public class CatalogFragment extends Fragment {
     private static final String ARG_PARAM1 = "param1";
     private static final String ARG_PARAM2 = "param2";
     private static final String TAG = "CatalogFragment";
-    public static final String COURSE_ADD_TO_LIST_CRN_KEY = "course_add_to_list_crn_key";
+    public static final String COURSE_LIST_CHANGE_CRN_KEY = "course_add_to_list_crn_key";
+    public static final String COURSE_REGISTER_STATUS_CHANGED = "course_register_status_changed";
     public static final int COURSE_DETAIL_REQUEST_CODE = 56174;//the number doesn't matter
-    public static final int COURSE_ADD_TO_LIST_CODE = 1857;//the number doesn't matter
+    public static final int COURSE_CHANGE_TO_LIST_CODE = 1857;//the number doesn't matter
 
     // TODO: Rename and change types of parameters
     private String mParam1;
@@ -131,7 +131,7 @@ public class CatalogFragment extends Fragment {
             HttpUrl urlForCourse = Objects.requireNonNull(HttpUrl.parse(urlForCourseStr)).newBuilder()
                     .addQueryParameter("subjcode", courseInfo.getNumber().substring(0, courseInfo.getNumber().indexOf('-')))
                     .addQueryParameter("crsenumb", courseInfo.getNumber().substring(courseInfo.getNumber().indexOf('-', 0) + 1, courseInfo.getNumber().lastIndexOf('-')))//position of second '-' if exist
-                    .addQueryParameter("validterm", sharedPreferences.getString(getString(R.string.pref_key_term), null))//default value should't be used based on design
+                    .addQueryParameter("validterm", getPreferredTerm(getContext()))
                     .addQueryParameter("crn", courseInfo.getCrn()).build();
             Intent intent = new Intent(getActivity(), CourseActivity.class);
             Bundle bundle = new Bundle();
@@ -230,6 +230,7 @@ public class CatalogFragment extends Fragment {
             String htmlResponse;
             if (response.body() != null) {
                 htmlResponse = response.body().string();
+                Log.i(TAG, htmlResponse);
                 return htmlResponse;
             }else {
                 return null;
@@ -292,18 +293,23 @@ public class CatalogFragment extends Fragment {
         }
     }
 
-    // TODO: Rename method, update argument and hook method into UI event
-    public void onButtonPressed(Uri uri) {
+    public void onLoadFinished() {
         if (mListener != null) {
-            mListener.catalogOnFragmentInteraction(uri);
+            mListener.catalogOnLoadFinished();
         }
     }
 
-    public void startTasks(){
+    public void onListStatusStatusChanged(boolean refreshAll){
+        if (mListener != null) {
+            mListener.catalogOnListStatusChanged(refreshAll);
+        }
+    }
+
+    public void startLoading(){
         executeGetCatalog();
     }
 
-    public void refreshCatalogList(String... specificCourseCrnExtra){
+    public void refreshCatalogListWithStatusChange(String... specificCourseCrnExtra){
         if(courseCatalogAdapter != null){
             List<Course> courses = courseCatalogAdapter.getOriginalList();
             if(courses != null && !courses.isEmpty()){
@@ -357,20 +363,30 @@ public class CatalogFragment extends Fragment {
                 int startPos = registerStatus.indexOf(course.getCrn());
                 if(startPos == -1) registerStatus = "On my list";//not on the list, error
                 else{//registered
-                    startPos = registerStatus.indexOf('^', startPos);
+                    startPos = registerStatus.indexOf('^', startPos) + 1;
                     int endPos = registerStatus.indexOf('-', startPos);
                     if(endPos == -1) endPos = registerStatus.length();
                     registerStatus = registerStatus.substring(startPos, endPos);
                 }
+            }
+            if(registerStatus != null){
+                Log.i(TAG, "COURSE: " + course.getCrn() + " REGISTER STATUS: " + registerStatus);
             }
             course.setRegisterStatus(registerStatus);
         }else course.setRegisterStatus(null);//no status
         return course;
     }
 
-    public static CourseBuilder getCourseBuilderFromElement(Element courseElement){
+    public static CourseBuilder getCourseBuilderFromElement(Element courseElement, Course... originalCourse){
+        CourseBuilder courseBuilder = null;
+        if(originalCourse != null && originalCourse.length == 1){
+            courseBuilder = originalCourse[0].newBuilder();//add original stuff to this builder
+        }
         if (courseElement.children().size() == 13) {//only include whole information elements
-            return new CourseBuilder()
+            if(courseBuilder == null) {
+                courseBuilder = new CourseBuilder();
+            }
+            courseBuilder
                     .setCrn(courseElement.child(0).text())
                     .setNumber(courseElement.child(1).text())
                     .setTitle(courseElement.child(2).child(0).ownText())/*remove the requirements in <br> tag*/
@@ -382,7 +398,8 @@ public class CatalogFragment extends Fragment {
                     .addLocation(courseElement.child(7).text())
                     .addPeriod(courseElement.child(8).text())
                     .setInstructor(courseElement.child(9).text());
-        }else return null;
+        }
+        return courseBuilder;
     }
 
     public void executeGetCatalog(){
@@ -393,6 +410,7 @@ public class CatalogFragment extends Fragment {
         if(courseCatalogAdapter != null){
             courseCatalogAdapter.swapNewDataSet(list);
         }
+        onLoadFinished();
         if(loadProgress != null){
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                 loadProgress.setProgress(100, true);
@@ -433,11 +451,16 @@ public class CatalogFragment extends Fragment {
 
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
-        if(requestCode == COURSE_DETAIL_REQUEST_CODE && resultCode == COURSE_ADD_TO_LIST_CODE){
+        if(requestCode == COURSE_DETAIL_REQUEST_CODE && resultCode == COURSE_CHANGE_TO_LIST_CODE){
             if(data != null){
-                String crn = data.getStringExtra(COURSE_ADD_TO_LIST_CRN_KEY);
+                String crn = data.getStringExtra(COURSE_LIST_CHANGE_CRN_KEY);
                 if(crn != null){
-                    refreshCatalogList(crn);
+                    refreshCatalogListWithStatusChange(crn);
+                    if(data.getBooleanExtra(COURSE_REGISTER_STATUS_CHANGED, false)){
+                        onListStatusStatusChanged(true);
+                    }else {
+                        onListStatusStatusChanged(false);
+                    }
                 }
             }
         }
@@ -471,7 +494,10 @@ public class CatalogFragment extends Fragment {
      * >Communicating with Other Fragments</a> for more information.
      */
     public interface CatalogOnFragmentInteractionListener {
-        // TODO: Update argument type and name
-        void catalogOnFragmentInteraction(Uri uri);
+
+        void catalogOnLoadFinished();
+
+        void catalogOnListStatusChanged(boolean refreshAll);
+
     }
 }

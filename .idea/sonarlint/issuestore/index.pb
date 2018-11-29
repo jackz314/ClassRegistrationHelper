@@ -61,8 +61,6 @@ O
 app/src/main/res/values/ids.xml,b\d\bd506d672607407c2d0357a9f7c1e4e7fdb6c3ad
 
 Oapp/src/main/java/com/jackz314/classregistrationhelper/ListRecyclerAdapter.java,5\0\50128e8b67e36abd451b4b5d17112ca6e319fcd8
-h
-8app/src/main/res/drawable/ic_playlist_add_black_24dp.xml,9\1\91ff7d62c6d842e1b3334972b7e8b91dce9e6b6b
 _
 /app/src/main/res/drawable/ic_web_black_24dp.xml,5\5\55766aa92a37c88a5764a56e23704fe1ea07d48c
 R

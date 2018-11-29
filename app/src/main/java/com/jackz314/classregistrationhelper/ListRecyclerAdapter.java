@@ -14,7 +14,6 @@ import android.widget.Filter;
 import android.widget.Filterable;
 import android.widget.TextView;
 
-import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -44,18 +43,19 @@ class ListRecyclerAdapter extends RecyclerView.Adapter<ListRecyclerAdapter.ListR
     @Override
     public void onBindViewHolder(@NonNull final ListRecyclerViewHolder holder, int position) {
         if(!filteredList.isEmpty() && filteredList.size() > position){
-            final SpannableString classNumber = new SpannableString(filteredList.get(position).getNumber());
-            final SpannableString classDescription = new SpannableString(filteredList.get(position).getTitle());
-            final SpannableString crn = new SpannableString(filteredList.get(position).getCrn());
-            final SpannableString availableSeats = new SpannableString(filteredList.get(position).getAvailableSeats());
-            //Log.i(TAG, "Position: "+ Integer.toString(position) + " " + classNumber + " " + classDescription + " " + crnNumber + " " + availableSeats);
-            if(query != null && !query.isEmpty()){
-                //set bold span for the searched part
-                //todo query for class numbers need further improvements
-                query = query.toLowerCase().replace('-', ' ');
-                String classNumberStr = classNumber.toString().toLowerCase().replace('-',' ');
-                String classDescriptionStr = classDescription.toString().toLowerCase();
-                String crnStr = crn.toString().toLowerCase();
+            try{
+                final SpannableString classNumber = new SpannableString(filteredList.get(position).getNumber());
+                final SpannableString classDescription = new SpannableString(filteredList.get(position).getTitle());
+                final SpannableString crn = new SpannableString(filteredList.get(position).getCrn());
+                final SpannableString availableSeats = new SpannableString(filteredList.get(position).getAvailableSeats());
+                //Log.i(TAG, "Position: "+ Integer.toString(position) + " " + classNumber + " " + classDescription + " " + crnNumber + " " + availableSeats);
+                if(query != null && !query.isEmpty()){
+                    //set bold span for the searched part
+                    //todo query for class numbers need further improvements
+                    query = query.toLowerCase().replace('-', ' ');
+                    String classNumberStr = classNumber.toString().toLowerCase().replace('-',' ');
+                    String classDescriptionStr = classDescription.toString().toLowerCase();
+                    String crnStr = crn.toString().toLowerCase();
                 /*if(query.contains(" ") && query.contains("0")){//eg. CSE 030
                     classNumberStr = classNumberStr.replace("-0", " ");
                 }else if(query.contains("0")){//e.g. CSE30
@@ -63,41 +63,47 @@ class ListRecyclerAdapter extends RecyclerView.Adapter<ListRecyclerAdapter.ListR
                 }else if(query.contains(" ")){//e.g. CSE 30
 
                 }*/
-                if(classNumberStr.contains(query)){
-                    int startPos = classNumberStr.indexOf(query);
-                    while (startPos >= 0){
-                        int endPos = Math.min(startPos + query.length(), classNumberStr.length());
-                        classNumber.setSpan(new StyleSpan(BOLD), startPos, endPos, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-                        startPos = classNumberStr.indexOf(query,endPos);
+                    if(classNumberStr.contains(query)){
+                        int startPos = classNumberStr.indexOf(query);
+                        while (startPos >= 0){
+                            int endPos = Math.min(startPos + query.length(), classNumberStr.length());
+                            classNumber.setSpan(new StyleSpan(BOLD), startPos, endPos, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                            startPos = classNumberStr.indexOf(query,endPos);
+                        }
+                    }
+                    if(classDescriptionStr.contains(query)){
+                        int startPos = classDescriptionStr.indexOf(query);
+                        while (startPos >= 0){
+                            int endPos = Math.min(startPos + query.length(), classDescriptionStr.length());
+                            classDescription.setSpan(new StyleSpan(BOLD), startPos, endPos, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                            startPos = classDescriptionStr.indexOf(query,endPos);
+                        }
+                    }
+                    if(crnStr.contains(query)){
+                        int startPos = crnStr.indexOf(query);
+                        while (startPos >= 0){
+                            int endPos = Math.min(startPos + query.length(), crnStr.length());
+                            crn.setSpan(new StyleSpan(BOLD), startPos, endPos, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                            startPos = crnStr.indexOf(query,endPos);
+                        }
                     }
                 }
-                if(classDescriptionStr.contains(query)){
-                    int startPos = classDescriptionStr.indexOf(query);
-                    while (startPos >= 0){
-                        int endPos = Math.min(startPos + query.length(), classDescriptionStr.length());
-                        classDescription.setSpan(new StyleSpan(BOLD), startPos, endPos, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-                        startPos = classDescriptionStr.indexOf(query,endPos);
-                    }
-                }
-                if(crnStr.contains(query)){
-                    int startPos = crnStr.indexOf(query);
-                    while (startPos >= 0){
-                        int endPos = Math.min(startPos + query.length(), crnStr.length());
-                        crn.setSpan(new StyleSpan(BOLD), startPos, endPos, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-                        startPos = crnStr.indexOf(query,endPos);
-                    }
-                }
-            }
-            holder.courseNumberTxt.setText(classNumber);
-            holder.courseDescriptionTxt.setText(classDescription);
-            holder.courseCrnTxt.setText(crn);
-            holder.courseAvailableSeatsTxt.setText(availableSeats);
+                holder.courseNumberTxt.setText(classNumber);
+                holder.courseDescriptionTxt.setText(classDescription);
+                holder.courseCrnTxt.setText(crn);
+                holder.courseAvailableSeatsTxt.setText(availableSeats);
 
-            String registerTime = filteredList.get(position).getRegisterStatus();
-            if(registerTime != null && !registerTime.isEmpty()){
-                Log.i(TAG, "Registered course: " + classNumber);
-                holder.registeredTimeTxt.setText(registerTime);
-                holder.registeredTimeTxt.setVisibility(View.VISIBLE);
+                String registerTime = filteredList.get(position).getRegisterStatus();
+                if(registerTime != null && !registerTime.isEmpty()){
+                    Log.i(TAG, "Registered course: " + crn + " POS: " + Integer.toString(position));
+                    holder.registeredTimeTxt.setText(registerTime);
+                    holder.registeredTimeTxt.setVisibility(View.VISIBLE);
+                }else {// you have no idea how long it took me to realize that this part is missing. I kept getting random statuses, and this is the reason behind it. Fuc.
+                    holder.registeredTimeTxt.setText("");
+                    holder.registeredTimeTxt.setVisibility(View.GONE);
+                }
+            }catch (NullPointerException e){
+                e.printStackTrace();
             }
         }
     }
@@ -134,7 +140,7 @@ class ListRecyclerAdapter extends RecyclerView.Adapter<ListRecyclerAdapter.ListR
                }
                FilterResults results = new FilterResults();
                results.values = arrTemp;
-               Log.i(TAG, Arrays.deepToString(arrTemp.toArray()));
+               //Log.i(TAG, Arrays.deepToString(arrTemp.toArray()));
                return results;
            }
 
