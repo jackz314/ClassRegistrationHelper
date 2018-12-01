@@ -8,11 +8,6 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.preference.PreferenceManager;
-import android.support.annotation.NonNull;
-import android.support.v4.app.Fragment;
-import android.support.v4.widget.SwipeRefreshLayout;
-import android.support.v7.widget.LinearLayoutManager;
-import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -20,12 +15,6 @@ import android.view.ViewGroup;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
-import org.jsoup.select.Elements;
-
-import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.util.Collections;
 import java.util.HashSet;
@@ -34,13 +23,20 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
-import okhttp3.FormBody;
+import androidx.annotation.NonNull;
+import androidx.fragment.app.Fragment;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import okhttp3.HttpUrl;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.RequestBody;
-import okhttp3.Response;
 
+import static com.jackz314.classregistrationhelper.Constants.COURSE_CHANGE_TO_LIST_CODE;
+import static com.jackz314.classregistrationhelper.Constants.COURSE_DETAIL_REQUEST_CODE;
+import static com.jackz314.classregistrationhelper.Constants.COURSE_LIST_CHANGE_CRN_KEY;
+import static com.jackz314.classregistrationhelper.Constants.COURSE_REGISTER_STATUS_CHANGED;
+import static com.jackz314.classregistrationhelper.CourseUtils.changeRegisterStatusForCourse;
+import static com.jackz314.classregistrationhelper.CourseUtils.getCatalogFromHtml;
+import static com.jackz314.classregistrationhelper.CourseUtils.getCatalogHtml;
 import static com.jackz314.classregistrationhelper.MainActivity.getPreferredTerm;
 
 
@@ -58,10 +54,6 @@ public class CatalogFragment extends Fragment {
     private static final String ARG_PARAM1 = "param1";
     private static final String ARG_PARAM2 = "param2";
     private static final String TAG = "CatalogFragment";
-    public static final String COURSE_LIST_CHANGE_CRN_KEY = "course_add_to_list_crn_key";
-    public static final String COURSE_REGISTER_STATUS_CHANGED = "course_register_status_changed";
-    public static final int COURSE_DETAIL_REQUEST_CODE = 56174;//the number doesn't matter
-    public static final int COURSE_CHANGE_TO_LIST_CODE = 1857;//the number doesn't matter
 
     // TODO: Rename and change types of parameters
     private String mParam1;
@@ -192,7 +184,7 @@ public class CatalogFragment extends Fragment {
                 return catalog;//empty
             }
 
-            catalog = getCatalog(htmlResponse, subjCode, context);
+            catalog = getCatalogFromHtml(htmlResponse, subjCode, context);
             if(catalog.isEmpty()){
                 //parsing error or others
                 Objects.requireNonNull(fragment.getActivity()).runOnUiThread(() -> Toast.makeText(context, context.getString(R.string.toast_unknown_error), Toast.LENGTH_SHORT).show());
@@ -212,104 +204,23 @@ public class CatalogFragment extends Fragment {
         }
     }
 
-    //long running
-    public static String getCatalogHtml(String url, String preferredTerm, String major, String onlyOpenClasses){
-        OkHttpClient client = new OkHttpClient();
-        RequestBody requestBody = new FormBody.Builder()
-                .add("validterm", preferredTerm)
-                .add("subjcode", major)
-                .add("openclasses", onlyOpenClasses)
-                .build();
-        Request request = new Request.Builder()
-                .url(url)
-                .post(requestBody)
-                .build();
-        Log.i(TAG, "Get catalog Info:" + "\n" + url + "\n" + preferredTerm + "\n" + major + "\n" + onlyOpenClasses);
-        try {
-            Response response = client.newCall(request).execute();
-            String htmlResponse;
-            if (response.body() != null) {
-                htmlResponse = response.body().string();
-                Log.i(TAG, htmlResponse);
-                return htmlResponse;
-            }else {
-                return null;
-            }
-        }catch (IOException e){
-            e.printStackTrace();
-            Log.e(TAG, e.getMessage());
-            e.printStackTrace();
-            return null;
-        }
-    }
-
-    //long running task
-    public static List<Course> getCatalog(String catalogHtmlStr, Set<String> subjCode, Context context){
-        List<Course> catalog = new LinkedList<>();
-        try{
-            Document document = Jsoup.parse(catalogHtmlStr);
-            Elements courseList = document.select("tr[bgcolor=\"#DDDDDD\"], tr[bgcolor=\"#FFFFFF\"]");
-            Set<String> selectionCrnSet = PreferenceManager.getDefaultSharedPreferences(context).getStringSet(context.getString(R.string.my_selection_crn_set), null);
-            Set<String> registeredCrnSet = PreferenceManager.getDefaultSharedPreferences(context).getStringSet(context.getString(R.string.my_registered_crn_set), null);
-            for (int i = 0, courseListSize = courseList.size(); i < courseListSize; i++) {
-                Element courseElement = courseList.get(i);
-                /*if(!(course.text().startsWith("EXAM")||
-                        course.text().startsWith("LECT")||
-                        course.text().startsWith("LAB"))||
-                        course.text().startsWith("SEM")){*///exclude separate exam/lect/lab/sem info elements
-                if (courseElement.children().size() == 13) {//only include whole information elements
-                    CourseBuilder courseBuilder = getCourseBuilderFromElement(courseElement);
-                    if(courseBuilder == null) return catalog;//empty. Error
-
-                    //add additional exam/lect/lab/sem info elements
-                    int tempIndex = i + 1;
-                    while (courseList.size() > tempIndex && courseList.get(tempIndex).children().size() == 12){
-                        Element additionalElement = courseList.get(tempIndex);
-                        //Log.i(TAG, "Added additional info: " + Arrays.toString(additionalElement.children().eachText().toArray()));
-                        courseBuilder.addType(additionalElement.child(3).text())
-                                .addDays(additionalElement.child(4).text())
-                                .addTime(additionalElement.child(5).text())
-                                .addLocation(additionalElement.child(6).text())
-                                .addPeriod(additionalElement.child(7).text());
-                        i = tempIndex;//skip the additional classes's elements in the for loop for more efficiency
-                        tempIndex++;
-                    }
-
-                    //build course and filter out not chosen ones
-                    Course course = courseBuilder.buildCourse();
-
-                    //multiple subject code support
-                    if ((subjCode.size() > 1 && subjCode.contains(course.getMajor())) || subjCode.size() == 1) {
-                        course = changeRegisterStatusForCourse(course, context, selectionCrnSet, registeredCrnSet);//set register status to course
-                        //Log.i(TAG, "Course info: " + course.toString());
-                        catalog.add(course);
-                    }
-                }
-            }
-            return catalog;
-        }catch (Exception e) {
-            e.printStackTrace();
-            return catalog;//empty
-        }
-    }
-
-    public void onLoadFinished() {
+    void onLoadFinished() {
         if (mListener != null) {
             mListener.catalogOnLoadFinished();
         }
     }
 
-    public void onListStatusStatusChanged(boolean refreshAll){
+    void onListStatusStatusChanged(boolean refreshAll){
         if (mListener != null) {
             mListener.catalogOnListStatusChanged(refreshAll);
         }
     }
 
-    public void startLoading(){
+    void startLoading(){
         executeGetCatalog();
     }
 
-    public void refreshCatalogListWithStatusChange(String... specificCourseCrnExtra){
+    void refreshCatalogListWithStatusChange(String... specificCourseCrnExtra){
         if(courseCatalogAdapter != null){
             List<Course> courses = courseCatalogAdapter.getOriginalList();
             if(courses != null && !courses.isEmpty()){
@@ -340,66 +251,6 @@ public class CatalogFragment extends Fragment {
         }else {
             Log.e(TAG, "REFRESH LIST FAILED. CATALOG ADAPTER IS NULL");
         }
-    }
-
-    @SafeVarargs//will not pass in wrong types
-    public static Course changeRegisterStatusForCourse(Course course, Context context, Set<String>... crnSets){
-        Set<String> selectionCrnSet, registeredCrnSet;
-        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
-        if(crnSets != null && crnSets.length > 1){
-            selectionCrnSet = crnSets[0];
-            registeredCrnSet = crnSets[1];
-        }else {
-            selectionCrnSet = sharedPreferences.getStringSet(context.getString(R.string.my_selection_crn_set), null);
-            registeredCrnSet = sharedPreferences.getStringSet(context.getString(R.string.my_registered_crn_set), null);
-        }
-        if(selectionCrnSet != null || registeredCrnSet != null){//add register status to the courses
-            String registerStatus = null;
-            if(selectionCrnSet != null && selectionCrnSet.contains(course.getCrn())){//selection list
-                registerStatus = "On my list";//on the list but not registered
-            }
-            if(registeredCrnSet != null && registeredCrnSet.contains(course.getCrn())){//registered list
-                registerStatus = sharedPreferences.getString(context.getString(R.string.my_course_registered_status_list), "");
-                int startPos = registerStatus.indexOf(course.getCrn());
-                if(startPos == -1) registerStatus = "On my list";//not on the list, error
-                else{//registered
-                    startPos = registerStatus.indexOf('^', startPos) + 1;
-                    int endPos = registerStatus.indexOf('-', startPos);
-                    if(endPos == -1) endPos = registerStatus.length();
-                    registerStatus = registerStatus.substring(startPos, endPos);
-                }
-            }
-            if(registerStatus != null){
-                Log.i(TAG, "COURSE: " + course.getCrn() + " REGISTER STATUS: " + registerStatus);
-            }
-            course.setRegisterStatus(registerStatus);
-        }else course.setRegisterStatus(null);//no status
-        return course;
-    }
-
-    public static CourseBuilder getCourseBuilderFromElement(Element courseElement, Course... originalCourse){
-        CourseBuilder courseBuilder = null;
-        if(originalCourse != null && originalCourse.length == 1){
-            courseBuilder = originalCourse[0].newBuilder();//add original stuff to this builder
-        }
-        if (courseElement.children().size() == 13) {//only include whole information elements
-            if(courseBuilder == null) {
-                courseBuilder = new CourseBuilder();
-            }
-            courseBuilder
-                    .setCrn(courseElement.child(0).text())
-                    .setNumber(courseElement.child(1).text())
-                    .setTitle(courseElement.child(2).child(0).ownText())/*remove the requirements in <br> tag*/
-                    .setAvailableSeats(courseElement.child(12).text())
-            //set other stuff for detail display later
-                    .addType(courseElement.child(4).text())
-                    .addDays(courseElement.child(5).text())
-                    .addTime(courseElement.child(6).text())
-                    .addLocation(courseElement.child(7).text())
-                    .addPeriod(courseElement.child(8).text())
-                    .setInstructor(courseElement.child(9).text());
-        }
-        return courseBuilder;
     }
 
     public void executeGetCatalog(){

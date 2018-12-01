@@ -8,13 +8,6 @@ import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
-import android.support.design.widget.AppBarLayout;
-import android.support.design.widget.CollapsingToolbarLayout;
-import android.support.design.widget.CoordinatorLayout;
-import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
-import android.support.v7.app.AlertDialog;
-import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.Display;
 import android.view.LayoutInflater;
@@ -26,6 +19,10 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.bumptech.glide.Glide;
+import com.google.android.material.appbar.AppBarLayout;
+import com.google.android.material.appbar.CollapsingToolbarLayout;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.android.material.snackbar.Snackbar;
 
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -39,6 +36,9 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.coordinatorlayout.widget.CoordinatorLayout;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -46,7 +46,8 @@ import okhttp3.Response;
 import static com.jackz314.classregistrationhelper.CatalogFragment.COURSE_CHANGE_TO_LIST_CODE;
 import static com.jackz314.classregistrationhelper.CatalogFragment.COURSE_LIST_CHANGE_CRN_KEY;
 import static com.jackz314.classregistrationhelper.CatalogFragment.COURSE_REGISTER_STATUS_CHANGED;
-import static com.jackz314.classregistrationhelper.MyCoursesFragment.registerCourses;
+import static com.jackz314.classregistrationhelper.CourseUtils.dropCourses;
+import static com.jackz314.classregistrationhelper.CourseUtils.registerCourses;
 
 public class CourseActivity extends AppCompatActivity {
 
@@ -62,6 +63,7 @@ public class CourseActivity extends AppCompatActivity {
     private boolean selectionNeedToUpdateCatalog = false, registerNeedToUpdateCatalog = false;
     private CourseListStatus courseListStatus = CourseListStatus.NOT_ON_LIST;
     private TextView registerStatusText;
+    private FloatingActionButton courseFab;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -69,6 +71,7 @@ public class CourseActivity extends AppCompatActivity {
         setContentView(R.layout.activity_course);
         toolbarLayout = findViewById(R.id.course_toolbar_layout);
         registerStatusText = findViewById(R.id.course_register_status);
+        courseFab = findViewById(R.id.fab_add_to_list);
 
         urlForCourse = getIntent().getBundleExtra("bundle").getString("URL");
         if(urlForCourse == null) return;
@@ -284,8 +287,6 @@ public class CourseActivity extends AppCompatActivity {
         TextView descriptionText = findViewById(R.id.course_description);
         TextView otherInfoText = findViewById(R.id.course_other_info);
 
-        FloatingActionButton courseFab = findViewById(R.id.fab_add_to_list);
-
         /*ConstraintLayout.LayoutParams zeroMarginParams = new ConstraintLayout.LayoutParams(//param setting for gone views
                 ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
@@ -484,6 +485,10 @@ public class CourseActivity extends AppCompatActivity {
             intent.putExtra(COURSE_LIST_CHANGE_CRN_KEY, courseCrn);
             setResult(COURSE_CHANGE_TO_LIST_CODE, intent);
         }
+        if(sharedPreferences.getBoolean(getString(R.string.pref_key_auto_check), true)
+                && !sharedPreferences.getBoolean(getString(R.string.started_alarm_manager), false)){
+
+        }
     }
 
     void undoAddToList(){
@@ -544,8 +549,11 @@ public class CourseActivity extends AppCompatActivity {
     }
 
     void addRegistrationStatus(){
+        removeFromList();
         registerStatusText.setVisibility(View.VISIBLE);
         registerStatusText.setText("Registered Just now");
+        courseFab.setImageResource(R.drawable.ic_register_done);
+        courseListStatus = CourseListStatus.REGISTERED;
         Intent intent = new Intent();
         intent.putExtra(COURSE_LIST_CHANGE_CRN_KEY, courseCrn);
         intent.putExtra(COURSE_REGISTER_STATUS_CHANGED, true);
@@ -553,7 +561,10 @@ public class CourseActivity extends AppCompatActivity {
     }
 
     void removeRegistrationStatus(){
+        registerStatusText.setText("");
         registerStatusText.setVisibility(View.GONE);
+        courseFab.setImageResource(R.drawable.ic_add_to_list);
+        courseListStatus = CourseListStatus.NOT_ON_LIST;
         Intent intent = new Intent();
         intent.putExtra(COURSE_LIST_CHANGE_CRN_KEY, courseCrn);
         intent.putExtra(COURSE_REGISTER_STATUS_CHANGED, true);
@@ -622,7 +633,6 @@ public class CourseActivity extends AppCompatActivity {
                 //Toast.makeText(activity, activity.getString(R.string.toast_register_unknown_error), Toast.LENGTH_SHORT).show();
             }else if(errors.isEmpty() || errors.get(0).length == 0){
                 dialogBuilder.setMessage(activity.getString(R.string.toast_register_success));
-                activity.removeFromList();
                 activity.addRegistrationStatus();
                 //Toast.makeText(activity, activity.getString(R.string.toast_register_success), Toast.LENGTH_SHORT).show();
             }else{
@@ -663,7 +673,7 @@ public class CourseActivity extends AppCompatActivity {
                             .setCancelable(false)
                             .show());
 
-            return MyCoursesFragment.dropCourse(activity, Collections.singletonList(activity.courseCrn));
+            return dropCourses(activity, Collections.singletonList(activity.courseCrn));
         }
 
         @Override

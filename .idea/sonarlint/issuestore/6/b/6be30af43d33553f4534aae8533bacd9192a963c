@@ -1,6 +1,6 @@
 
-Dsquid:S1185"(Remove this method to simply inherit it.(Ù«µ§8ª¬™çô,
-Ksquid:S00108")Either remove or fill this block of code.(Õó³÷úÿÿÿÿ8ª¬™çô,
-Ksquid:S00108")Either remove or fill this block of code.(»ƒ ™þÿÿÿÿ8ª¬™çô,
-Fsquid:S00108")Either remove or fill this block of code.(¼ñ­ê8ª¬™çô,
-¢squid:S1186"€Add a nested comment explaining why this method is empty, throw an UnsupportedOperationException or complete the implementation.(¸ÿüûùÿÿÿÿ8ª¬™çô,
+Ksquid:S00108")Either remove or fill this block of code.(»ƒ ™þÿÿÿÿ8Ì––øõ,
+Dsquid:S1185"(Remove this method to simply inherit it.(Ù«µ§8Ì––øõ,
+Ksquid:S1066"/Merge this if statement with the enclosing one.(î‡³Ä8Ì––øõ,
+Fsquid:S00108")Either remove or fill this block of code.(¼ñ­ê8Ì––øõ,
+Ksquid:S00108")Either remove or fill this block of code.(Õó³÷úÿÿÿÿ8Ì––øõ,

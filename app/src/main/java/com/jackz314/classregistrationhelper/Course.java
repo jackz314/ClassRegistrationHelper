@@ -489,7 +489,7 @@ public class Course implements Parcelable {
                         combinedText.append(", ");
                     }
                     if(i == majorRestrictionYes.size() - 2){//form the format: a, b, or c
-                        combinedText.append(" or ");
+                        combinedText.append("or ");
                     }
                 }
             }

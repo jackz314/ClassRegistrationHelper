@@ -1,8 +1,6 @@
 package com.jackz314.classregistrationhelper;
 
 import android.content.Context;
-import android.support.annotation.NonNull;
-import android.support.v7.widget.RecyclerView;
 import android.text.SpannableString;
 import android.text.Spanned;
 import android.text.style.StyleSpan;
@@ -16,6 +14,9 @@ import android.widget.TextView;
 
 import java.util.LinkedList;
 import java.util.List;
+
+import androidx.annotation.NonNull;
+import androidx.recyclerview.widget.RecyclerView;
 
 import static android.graphics.Typeface.BOLD;
 

@@ -13,20 +13,21 @@ import android.preference.ListPreference;
 import android.preference.MultiSelectListPreference;
 import android.preference.Preference;
 import android.preference.PreferenceActivity;
-import android.preference.SwitchPreference;
-import android.provider.Settings;
-import android.support.v7.app.ActionBar;
 import android.preference.PreferenceFragment;
 import android.preference.PreferenceManager;
 import android.preference.RingtonePreference;
+import android.preference.SwitchPreference;
+import android.provider.Settings;
 import android.text.TextUtils;
 import android.view.MenuItem;
-import android.support.v4.app.NavUtils;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+
+import androidx.appcompat.app.ActionBar;
+import androidx.core.app.NavUtils;
 
 /**
  * A {@link PreferenceActivity} that presents a set of application settings. On
@@ -235,6 +236,20 @@ public class SettingsActivity extends AppCompatPreferenceActivity {
             SwitchPreference openClassPreference = (SwitchPreference)findPreference(getString(R.string.pref_key_only_show_open_classes));
             openClassPreference.setOnPreferenceChangeListener((preference, o) -> {
                 sharedPreferences.edit().putBoolean(getContext().getString(R.string.changed_settings), true).apply();
+                return true;
+            });
+
+            SwitchPreference autoRegisterPreference = (SwitchPreference)findPreference(getString(R.string.pref_key_auto_reg));
+
+            SwitchPreference autoCheckPreference = (SwitchPreference)findPreference(getString(R.string.pref_key_auto_check));
+            autoCheckPreference.setOnPreferenceChangeListener((preference, newValue) -> {
+                if((Boolean)newValue){
+                    autoRegisterPreference.setEnabled(true);
+                    autoRegisterPreference.setChecked(sharedPreferences.getBoolean(getString(R.string.pref_key_auto_reg), true));
+                }else {
+                    autoRegisterPreference.setEnabled(false);
+                    autoRegisterPreference.setChecked(false);
+                }
                 return true;
             });
         }

@@ -70,25 +70,32 @@
 
     <string name="pref_key_notif">pref_key_notif_main</string>
     <string name="pref_title_notif">Show notifications</string>
-    <string name="pref_content_notif">Notify me when my class selections are available.</string>
+    <string name="pref_content_notif">Notify me when classes on my list are available.</string>
 
-    <string name="pref_title_major">Choose majors</string>
+    <string name="pref_title_major">Choose Majors</string>
     <string name="pref_key_major">pref_key_valid_major</string>
 
     <string name="changed_settings">changed_settings</string>
 
     <string name="pref_key_term">pref_key_term</string>
     <string name="pref_title_term">Choose Term</string>
-    <string-array name="pref_example_list_titles">
-        <item>Always</item>
-        <item>When possible</item>
-        <item>Never</item>
-    </string-array>
-    <string-array name="pref_example_list_values">
-        <item>1</item>
-        <item>0</item>
-        <item>-1</item>
-    </string-array>
+
+    <string name="pref_key_auto_reg">pref_key_auto_reg</string>
+    <string name="pref_title_auto_reg">Auto Register</string>
+    <string name="pref_content_auto_reg">Auto register courses on my list if they become available</string>
+
+    <string name="pref_key_auto_check">pref_key_auto_check</string>
+    <string name="pref_title_auto_check">Auto Check</string>
+    <string name="pref_content_auto_check">Regularly check in the background for the availability of courses on my list</string>
+
+    <string name="pref_key_query_interval">pref_key_query_interval</string>
+    <string name="pref_title_query_interval">Course availability check interval</string>
+    <string name="pref_content_query_interval">How often to check for available courses with the server</string>
+
+    <string name="pref_key_summary_interval">pref_key_summary_interval</string>
+    <string name="pref_title_summary_interval">Send register status summary interval</string>
+
+    <string name="started_alarm_manager">started_alarm_manager</string>
 
     <!-- Example settings for Data & Sync -->
     <string name="pref_header_data_sync">Data &amp; sync</string>

@@ -21,8 +21,6 @@
             android:key="@string/pref_key_major"
             android:title="@string/pref_title_major" />
         <ListPreference
-            android:entries="@array/pref_example_list_titles"
-            android:entryValues="@array/pref_example_list_values"
             android:key="@string/pref_key_term"
             android:negativeButtonText="@null"
             android:positiveButtonText="@null"
@@ -30,6 +28,21 @@
 
     </PreferenceCategory>
 
+    <PreferenceCategory android:title="Course Registration">
+
+        <SwitchPreference
+            android:defaultValue="true"
+            android:key="@string/pref_key_auto_check"
+            android:title="@string/pref_title_auto_check"
+            android:summary="@string/pref_content_auto_check"/>
+
+        <SwitchPreference
+            android:defaultValue="true"
+            android:key="@string/pref_key_auto_reg"
+            android:title="@string/pref_title_auto_reg"
+            android:summary="@string/pref_content_auto_reg"/>
+
+    </PreferenceCategory>
     <PreferenceCategory android:title="Notifications">
 
         <SwitchPreference

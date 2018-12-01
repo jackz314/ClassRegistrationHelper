@@ -65,8 +65,6 @@ _
 /app/src/main/res/drawable/ic_web_black_24dp.xml,5\5\55766aa92a37c88a5764a56e23704fe1ea07d48c
 R
 "app/src/main/res/values/styles.xml,f\7\f79cc2688e29fcbc286fda14ae07b27c9e83690f
-
-Oapp/src/main/java/com/jackz314/classregistrationhelper/CheckCoursesService.java,9\9\99bbec6f4c8a65623e4146c5037df6d24a074d02
 {
 Kapp/src/main/java/com/jackz314/classregistrationhelper/CatalogFragment.java,7\7\77bef7d5c3754b4e44c83fcea9e949ed95032286
 {
@@ -75,3 +73,13 @@ y
 Iapp/src/main/java/com/jackz314/classregistrationhelper/LoginActivity.java,0\f\0faefe0e64b7401f1401a2f683f2b8e8b9b1983b
 }
 Mapp/src/main/java/com/jackz314/classregistrationhelper/MyCoursesFragment.java,0\d\0d95dae7bba47ade47636506aa7b8c45e1522849
+b
+2app/src/main/res/layout/progress_dialog_layout.xml,5\9\59547f417f601cf1d5ff99fa6f6c4f6b2cfed337
+f
+6build/reports/profile/profile-2018-11-29-17-54-34.html,d\4\d48d96183709ee4386e76a49e8d2027a3df0a6b3
+<
+build.gradle,f\0\f07866736216be0ee2aba49e392191aeae700a35
+A
+gradle.properties,2\a\2afbb999f001938c88fa43fc2ef52abf0f8213e4
+}
+Mapp/src/main/java/com/jackz314/classregistrationhelper/CourseStuffWorker.java,5\8\58c27548aaf97734979564ef946dd1e4ef0169f2

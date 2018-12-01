@@ -1,7 +1,8 @@
 package com.jackz314.classregistrationhelper;
 
-import android.support.v7.widget.RecyclerView;
 import android.view.View;
+
+import androidx.recyclerview.widget.RecyclerView;
 
 /**
  * Created by zhang on 2017/9/13.

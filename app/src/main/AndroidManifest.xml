@@ -46,7 +46,7 @@
         </activity>
 
         <service
-            android:name=".CheckCoursesService"
+            android:name=".CourseStuffWorker"
             android:enabled="true"
             android:exported="true" />
 

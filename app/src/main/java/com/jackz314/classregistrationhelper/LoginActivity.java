@@ -9,11 +9,9 @@ import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
-import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
-import android.view.View.OnClickListener;
 import android.view.inputmethod.EditorInfo;
 import android.widget.Button;
 import android.widget.EditText;
@@ -23,6 +21,7 @@ import org.jsoup.nodes.Document;
 
 import java.io.IOException;
 
+import androidx.appcompat.app.AppCompatActivity;
 import okhttp3.FormBody;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -30,7 +29,7 @@ import okhttp3.Request.Builder;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 
-import static com.jackz314.classregistrationhelper.MyCoursesFragment.LOGIN_SUCCESS_CODE;
+import static com.jackz314.classregistrationhelper.Constants.LOGIN_SUCCESS_CODE;
 
 /**
  * A login screen that offers login via UCMNetID & password.
@@ -66,13 +65,8 @@ public class LoginActivity extends AppCompatActivity {
             return false;
         });
 
-        Button mEmailSignInButton = findViewById(R.id.sign_in_button);
-        mEmailSignInButton.setOnClickListener(new OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                attemptLogin();
-            }
-        });
+        Button mSignInButton = findViewById(R.id.sign_in_button);
+        mSignInButton.setOnClickListener(view -> attemptLogin());
 
         mLoginFormView = findViewById(R.id.login_form_layout);
         mProgressView = findViewById(R.id.login_progress);
