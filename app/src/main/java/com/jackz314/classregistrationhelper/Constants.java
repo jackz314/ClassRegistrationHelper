@@ -18,4 +18,5 @@ public final class Constants {
     //worker constants
     static final String WORKER_SHORTER_INTERVAL_DATA = "worker_shorter_interval_data";
     static final String WORKER_IS_SUMMARY_JOB = "worker_is_summary_job";
+    static final String COURSE_STUFF_WORKER_NAME = "course_stuff_worker_name";
 }

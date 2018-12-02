@@ -37,7 +37,7 @@ import static com.jackz314.classregistrationhelper.Constants.COURSE_REGISTER_STA
 import static com.jackz314.classregistrationhelper.CourseUtils.changeRegisterStatusForCourse;
 import static com.jackz314.classregistrationhelper.CourseUtils.getCatalogFromHtml;
 import static com.jackz314.classregistrationhelper.CourseUtils.getCatalogHtml;
-import static com.jackz314.classregistrationhelper.MainActivity.getPreferredTerm;
+import static com.jackz314.classregistrationhelper.CourseUtils.getPreferredTerm;
 
 
 /**

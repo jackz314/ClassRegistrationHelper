@@ -1,36 +1,24 @@
 package com.jackz314.classregistrationhelper;
 
 import android.animation.LayoutTransition;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.app.SearchManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.os.Build;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
-import android.text.TextUtils;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.LinearLayout;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.google.android.material.navigation.NavigationView;
 import com.google.android.material.tabs.TabLayout;
-import com.google.common.collect.Lists;
 
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
-import org.jsoup.select.Elements;
-
-import java.io.IOException;
-import java.util.Calendar;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Objects;
 
 import androidx.annotation.NonNull;
@@ -41,9 +29,8 @@ import androidx.appcompat.widget.Toolbar;
 import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.viewpager.widget.ViewPager;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.Response;
+
+import static com.jackz314.classregistrationhelper.Constants.CHANNEL_ID;
 
 public class MainActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener, CatalogFragment.CatalogOnFragmentInteractionListener, MyCoursesFragment.MyCoursesOnFragmentInteractionListener {
@@ -78,6 +65,7 @@ public class MainActivity extends AppCompatActivity
         tabLayout.setupWithViewPager(viewPager);
         viewPager.setCurrentItem(0);//which is My List
 
+        createNotificationChannel();
         //myCoursesFragment = (MyCoursesFragment)getSupportFragmentManager().getFragments().get(1);
 
         DrawerLayout drawer = findViewById(R.id.drawer_layout);
@@ -175,142 +163,20 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
-    //methods
-    static String[][] getValidTerms(Context context){
-        OkHttpClient client = new OkHttpClient();
-        String getRequestCatalogUrl = context.getString(R.string.get_request_catalog_url);
-        Request request = new Request.Builder()
-                .url(getRequestCatalogUrl)
-                .build();
-        try {
-            Response response = client.newCall(request).execute();
-            String htmlResponse;
-            if (response.body() != null) {
-                htmlResponse = response.body().string();
-            }else {
-                return new String[][]{};//empty
-            }
-            Document document = Jsoup.parse(htmlResponse);
-            Elements elements = document.select("input[name=validterm]");
-            List<String> validTermValues = new LinkedList<>();
-            List<String> validTermNames = new LinkedList<>();
-            //place the latest ones on top
-            for (Element element: Lists.reverse(elements)) {
-                validTermValues.add(element.val());
-                validTermNames.add(element.parent().parent().text());
-            }
-            String[] values = validTermValues.toArray(new String[0]);
-            String[] names = validTermNames.toArray(new String[0]);
-            if(values.length == 0 || names.length == 0){
-                return new String[][]{};//empty
-            }
-            return new String[][]{values, names};
-        } catch (IOException e) {
-            Log.e(TAG, e.getMessage());
-            e.printStackTrace();
-            Toast.makeText(context, context.getString(R.string.toast_internet_error), Toast.LENGTH_SHORT).show();
-            return new String[][]{};//empty
+    private void createNotificationChannel() {
+        // Create the NotificationChannel, but only on API 26+ because
+        // the NotificationChannel class is new and not in the support library
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            CharSequence name = getString(R.string.channel_name);
+            String description = getString(R.string.channel_description);
+            int importance = NotificationManager.IMPORTANCE_DEFAULT;
+            NotificationChannel channel = new NotificationChannel(CHANNEL_ID, name, importance);
+            channel.setDescription(description);
+            // Register the channel with the system; you can't change the importance
+            // or other notification behaviors after this
+            NotificationManager notificationManager = getSystemService(NotificationManager.class);
+            notificationManager.createNotificationChannel(channel);
         }
-    }
-
-    /**
-     * Get all valid majors from website
-     *
-     * @param context run time context
-     * @return String[][] with 2 sub String[]
-     * first one is a String[] with major's values like "CSE"
-     * second one is a String[] with major's names like "Computer Science and Engineering"
-     */
-    static String[][] getValidMajors(Context context){
-        OkHttpClient client = new OkHttpClient();
-        String url = context.getString(R.string.get_request_catalog_url);
-        Request request = new Request.Builder()
-                .url(url)
-                .build();
-        try {
-            Response response = client.newCall(request).execute();
-            String htmlResponse;
-            if (response.body() != null) {
-                htmlResponse = response.body().string();
-            }else {
-                return new String[][]{};//empty
-            }
-            Document document = Jsoup.parse(htmlResponse);
-            Elements majorList = document.select("select[name=subjcode] option");
-            List<String> validMajorValues = new LinkedList<>();
-            List<String> validMajorNames = new LinkedList<>();
-            for (Element major : majorList) {
-                validMajorValues.add(major.val());
-                validMajorNames.add(major.ownText());
-            }
-            String[] values = validMajorValues.toArray(new String[0]);
-            String[] names = validMajorNames.toArray(new String[0]);
-            return new String[][]{values, names};
-        } catch (IOException e) {
-            Log.e(TAG, e.getMessage());
-            e.printStackTrace();
-            Toast.makeText(context, context.getString(R.string.toast_internet_error), Toast.LENGTH_SHORT).show();
-            return new String[][]{};//empty
-        }
-    }
-
-    static void storeDefaultCatalogInfo(Context context, String defaultTerm, String[] validTermValues, String[] validTermNames, String[] validMajorValues, String[] validMajorNames){
-        SharedPreferences.Editor editor = PreferenceManager.getDefaultSharedPreferences(context).edit();
-        editor.putString(context.getString(R.string.pref_key_term), defaultTerm);//put the latest valid term as the default term selection
-        editor.putStringSet(context.getString(R.string.pref_key_major), new HashSet<>(Collections.singletonList(validMajorValues[0])));//put ALL as default
-        editor.putString(context.getString(R.string.pref_key_valid_term_values), TextUtils.join(";", validTermValues));
-        editor.putString(context.getString(R.string.pref_key_valid_term_names), TextUtils.join(";", validTermNames));
-        editor.putString(context.getString(R.string.pref_key_valid_major_values), TextUtils.join(";", validMajorValues));
-        editor.putString(context.getString(R.string.pref_key_valid_major_names), TextUtils.join(";", validMajorNames));
-
-        //update last sync time
-        editor.putLong(context.getString(R.string.last_sync_time), new Date().getTime());
-
-        editor.commit();
-    }
-
-    public static String getPreferredTerm(Context context){
-        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
-        String defaultTerm = sharedPreferences.getString(context.getString(R.string.pref_key_term), null);
-        if(defaultTerm != null) return defaultTerm;
-
-        String[] validTermValues = sharedPreferences.getString(context.getString(R.string.pref_key_valid_term_values), "").split(";");
-        if(validTermValues[0].equals("")){
-            String[][] validTerms = getValidTerms(context);
-            if(validTerms.length == 0){//internet problems
-                return null;
-            }else {
-                validTermValues = validTerms[0];
-                String[] validTermNames = validTerms[1];
-                //store defaults into sharedpreference if started for the first time
-                //major values/names as well
-                String[] validMajorValues = getValidMajors(context)[0];
-                String[] validMajorNames = getValidMajors(context)[1];
-                storeDefaultCatalogInfo(context, validTerms[0][0]/*store latest valid term as default*/
-                        , validTermValues, validTermNames, validMajorValues, validMajorNames);
-            }
-        }else{
-            //check for the last time updated the information
-            Calendar calendar = Calendar.getInstance();
-            calendar.add(Calendar.MONTH, -3);//set to three months ago from now
-            Long lastSyncTime = sharedPreferences.getLong(context.getString(R.string.last_sync_time), -1);
-            if(lastSyncTime == -1){
-                //this shouldn't happen by design
-                return null;
-            }
-            if(new Date(lastSyncTime).before(calendar.getTime())){//last sync is before three months
-                //sync again
-                String[] newValidTermValues = getValidTerms(context)[0];
-                String[] newValidTermNames = getValidTerms(context)[1];
-                String[] newValidMajorValues = getValidMajors(context)[0];
-                String[] newValidMajorNames = getValidMajors(context)[1];
-                storeDefaultCatalogInfo(context, newValidTermValues[0],/*latest valid term for default*/
-                        newValidTermValues, newValidTermNames, newValidMajorValues, newValidMajorNames);
-                validTermValues = newValidTermValues;//update old term values
-            }
-        }
-        defaultTerm = validTermValues[0];//set the latest valid term as the default term
-        return defaultTerm;
     }
 
     @Override

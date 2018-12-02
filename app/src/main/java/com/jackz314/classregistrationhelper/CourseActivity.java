@@ -43,9 +43,9 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 
-import static com.jackz314.classregistrationhelper.CatalogFragment.COURSE_CHANGE_TO_LIST_CODE;
-import static com.jackz314.classregistrationhelper.CatalogFragment.COURSE_LIST_CHANGE_CRN_KEY;
-import static com.jackz314.classregistrationhelper.CatalogFragment.COURSE_REGISTER_STATUS_CHANGED;
+import static com.jackz314.classregistrationhelper.Constants.COURSE_CHANGE_TO_LIST_CODE;
+import static com.jackz314.classregistrationhelper.Constants.COURSE_LIST_CHANGE_CRN_KEY;
+import static com.jackz314.classregistrationhelper.Constants.COURSE_REGISTER_STATUS_CHANGED;
 import static com.jackz314.classregistrationhelper.CourseUtils.dropCourses;
 import static com.jackz314.classregistrationhelper.CourseUtils.registerCourses;
 

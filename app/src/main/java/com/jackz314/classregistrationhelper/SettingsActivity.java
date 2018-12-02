@@ -28,6 +28,9 @@ import java.util.List;
 
 import androidx.appcompat.app.ActionBar;
 import androidx.core.app.NavUtils;
+import androidx.work.WorkManager;
+
+import static com.jackz314.classregistrationhelper.CourseUtils.addToWorkerQueue;
 
 /**
  * A {@link PreferenceActivity} that presents a set of application settings. On
@@ -246,9 +249,11 @@ public class SettingsActivity extends AppCompatPreferenceActivity {
                 if((Boolean)newValue){
                     autoRegisterPreference.setEnabled(true);
                     autoRegisterPreference.setChecked(sharedPreferences.getBoolean(getString(R.string.pref_key_auto_reg), true));
+                    addToWorkerQueue(getContext());
                 }else {
                     autoRegisterPreference.setEnabled(false);
                     autoRegisterPreference.setChecked(false);
+                    WorkManager.getInstance().cancelAllWork();
                 }
                 return true;
             });

@@ -97,6 +97,9 @@
 
     <string name="started_alarm_manager">started_alarm_manager</string>
 
+    <string name="channel_name">Course watcher status updates</string>
+    <string name="channel_description">Notifications for status updates for courses on your list</string>
+
     <!-- Example settings for Data & Sync -->
     <string name="pref_header_data_sync">Data &amp; sync</string>
 

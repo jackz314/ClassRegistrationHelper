@@ -4,7 +4,12 @@ import android.app.Notification;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.preference.PreferenceManager;
+import android.text.TextUtils;
 import android.util.Log;
+import android.widget.Toast;
+
+import com.google.common.collect.Lists;
+import com.google.common.util.concurrent.ListenableFuture;
 
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -14,10 +19,14 @@ import org.jsoup.select.Elements;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
+import java.util.Collections;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 import androidx.annotation.NonNull;
@@ -25,9 +34,11 @@ import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 import androidx.work.Constraints;
 import androidx.work.Data;
+import androidx.work.ExistingPeriodicWorkPolicy;
 import androidx.work.NetworkType;
 import androidx.work.OneTimeWorkRequest;
 import androidx.work.PeriodicWorkRequest;
+import androidx.work.WorkInfo;
 import androidx.work.WorkManager;
 import okhttp3.FormBody;
 import okhttp3.OkHttpClient;
@@ -38,10 +49,10 @@ import okhttp3.ResponseBody;
 import okio.Buffer;
 
 import static com.jackz314.classregistrationhelper.Constants.CHANNEL_ID;
+import static com.jackz314.classregistrationhelper.Constants.COURSE_STUFF_WORKER_NAME;
 import static com.jackz314.classregistrationhelper.Constants.WORKER_IS_SUMMARY_JOB;
 import static com.jackz314.classregistrationhelper.Constants.WORKER_SHORTER_INTERVAL_DATA;
 import static com.jackz314.classregistrationhelper.LoginActivity.reauthorizeWithCastgc;
-import static com.jackz314.classregistrationhelper.MainActivity.getPreferredTerm;
 
 public class CourseUtils {
 
@@ -50,6 +61,7 @@ public class CourseUtils {
     //course worker related
 
     static void addToWorkerQueue(Context context){
+        if(isWorkScheduled(COURSE_STUFF_WORKER_NAME)) return;//quit if already scheduled
         SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
         long repeatInterval = sharedPreferences.getLong(context.getString(R.string.pref_key_query_interval), 900);
         long shorterInterval = sharedPreferences.getLong(context.getString(R.string.pref_key_query_interval), -1);
@@ -73,7 +85,33 @@ public class CourseUtils {
                 .build();
         workRequestBuilder.setConstraints(constraints);
 
-        WorkManager.getInstance().enqueue(workRequestBuilder.build());
+        //just to make sure not to do it again
+        WorkManager.getInstance().enqueueUniquePeriodicWork(COURSE_STUFF_WORKER_NAME, ExistingPeriodicWorkPolicy.KEEP, workRequestBuilder.build());
+
+        //also add routine summary requests here
+        if(sharedPreferences.getLong(context.getString(R.string.pref_key_summary_interval), 24) != -1){
+            addRountineSummaryRequest(context);
+        }
+    }
+
+    static boolean isWorkScheduled(String tag) {
+        WorkManager instance = WorkManager.getInstance();
+        ListenableFuture<List<WorkInfo>> statuses = instance.getWorkInfosByTag(tag);
+        try {
+            boolean running = false;
+            List<WorkInfo> workInfoList = statuses.get();
+            for (WorkInfo workInfo : workInfoList) {
+                WorkInfo.State state = workInfo.getState();
+                running = state == WorkInfo.State.RUNNING | state == WorkInfo.State.ENQUEUED;
+            }
+            return running;
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+            return false;
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+            return false;
+        }
     }
 
     //interval is in seconds unit, not milliseconds
@@ -130,8 +168,7 @@ public class CourseUtils {
      * Check for available courses, and based on user preference, register the courses if available
      *
      * @param context to get resources
-     * @return Technical error occurred: null
-     *         No courses available: empty notification
+     * @return No courses available: null
      *         Courses are available & only notify: notification for available courses
      *         Registration error: notification for registration error
      *         Registered: notification for registration success information
@@ -140,7 +177,7 @@ public class CourseUtils {
     static Notification checkAndRegisterCourses(Context context){
         SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
         String courseUrlsStr = sharedPreferences.getString(context.getString(R.string.my_course_selection_list), null);
-        if(courseUrlsStr == null) throw new NullPointerException("Course URL is null");
+        if(courseUrlsStr == null) return null;
         String[] courseUrls = courseUrlsStr.split("-");//fast split for me haha
         List<String> coursesToRegister = new LinkedList<>();
         List<String> coursesToRegisterNumbers = new LinkedList<>();
@@ -1045,6 +1082,144 @@ public class CourseUtils {
     }
 
     //catalog related
+    //settings
+    static String[][] getValidTerms(Context context){
+        OkHttpClient client = new OkHttpClient();
+        String getRequestCatalogUrl = context.getString(R.string.get_request_catalog_url);
+        Request request = new Request.Builder()
+                .url(getRequestCatalogUrl)
+                .build();
+        try {
+            Response response = client.newCall(request).execute();
+            String htmlResponse;
+            if (response.body() != null) {
+                htmlResponse = response.body().string();
+            }else {
+                return new String[][]{};//empty
+            }
+            Document document = Jsoup.parse(htmlResponse);
+            Elements elements = document.select("input[name=validterm]");
+            List<String> validTermValues = new LinkedList<>();
+            List<String> validTermNames = new LinkedList<>();
+            //place the latest ones on top
+            for (Element element: Lists.reverse(elements)) {
+                validTermValues.add(element.val());
+                validTermNames.add(element.parent().parent().text());
+            }
+            String[] values = validTermValues.toArray(new String[0]);
+            String[] names = validTermNames.toArray(new String[0]);
+            if(values.length == 0 || names.length == 0){
+                return new String[][]{};//empty
+            }
+            return new String[][]{values, names};
+        } catch (IOException e) {
+            Log.e(TAG, e.getMessage());
+            e.printStackTrace();
+            Toast.makeText(context, context.getString(R.string.toast_internet_error), Toast.LENGTH_SHORT).show();
+            return new String[][]{};//empty
+        }
+    }
+
+    /**
+     * Get all valid majors from website
+     *
+     * @param context run time context
+     * @return String[][] with 2 sub String[]
+     * first one is a String[] with major's values like "CSE"
+     * second one is a String[] with major's names like "Computer Science and Engineering"
+     */
+    static String[][] getValidMajors(Context context){
+        OkHttpClient client = new OkHttpClient();
+        String url = context.getString(R.string.get_request_catalog_url);
+        Request request = new Request.Builder()
+                .url(url)
+                .build();
+        try {
+            Response response = client.newCall(request).execute();
+            String htmlResponse;
+            if (response.body() != null) {
+                htmlResponse = response.body().string();
+            }else {
+                return new String[][]{};//empty
+            }
+            Document document = Jsoup.parse(htmlResponse);
+            Elements majorList = document.select("select[name=subjcode] option");
+            List<String> validMajorValues = new LinkedList<>();
+            List<String> validMajorNames = new LinkedList<>();
+            for (Element major : majorList) {
+                validMajorValues.add(major.val());
+                validMajorNames.add(major.ownText());
+            }
+            String[] values = validMajorValues.toArray(new String[0]);
+            String[] names = validMajorNames.toArray(new String[0]);
+            return new String[][]{values, names};
+        } catch (IOException e) {
+            Log.e(TAG, e.getMessage());
+            e.printStackTrace();
+            Toast.makeText(context, context.getString(R.string.toast_internet_error), Toast.LENGTH_SHORT).show();
+            return new String[][]{};//empty
+        }
+    }
+
+    static void storeDefaultCatalogInfo(Context context, String defaultTerm, String[] validTermValues, String[] validTermNames, String[] validMajorValues, String[] validMajorNames){
+        SharedPreferences.Editor editor = PreferenceManager.getDefaultSharedPreferences(context).edit();
+        editor.putString(context.getString(R.string.pref_key_term), defaultTerm);//put the latest valid term as the default term selection
+        editor.putStringSet(context.getString(R.string.pref_key_major), new HashSet<>(Collections.singletonList(validMajorValues[0])));//put ALL as default
+        editor.putString(context.getString(R.string.pref_key_valid_term_values), TextUtils.join(";", validTermValues));
+        editor.putString(context.getString(R.string.pref_key_valid_term_names), TextUtils.join(";", validTermNames));
+        editor.putString(context.getString(R.string.pref_key_valid_major_values), TextUtils.join(";", validMajorValues));
+        editor.putString(context.getString(R.string.pref_key_valid_major_names), TextUtils.join(";", validMajorNames));
+
+        //update last sync time
+        editor.putLong(context.getString(R.string.last_sync_time), new Date().getTime());
+
+        editor.commit();
+    }
+
+    static String getPreferredTerm(Context context){
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
+        String defaultTerm = sharedPreferences.getString(context.getString(R.string.pref_key_term), null);
+        if(defaultTerm != null) return defaultTerm;
+
+        String[] validTermValues = sharedPreferences.getString(context.getString(R.string.pref_key_valid_term_values), "").split(";");
+        if(validTermValues[0].equals("")){
+            String[][] validTerms = getValidTerms(context);
+            if(validTerms.length == 0){//internet problems
+                return null;
+            }else {
+                validTermValues = validTerms[0];
+                String[] validTermNames = validTerms[1];
+                //store defaults into sharedpreference if started for the first time
+                //major values/names as well
+                String[] validMajorValues = getValidMajors(context)[0];
+                String[] validMajorNames = getValidMajors(context)[1];
+                storeDefaultCatalogInfo(context, validTerms[0][0]/*store latest valid term as default*/
+                        , validTermValues, validTermNames, validMajorValues, validMajorNames);
+            }
+        }else{
+            //check for the last time updated the information
+            Calendar calendar = Calendar.getInstance();
+            calendar.add(Calendar.MONTH, -3);//set to three months ago from now
+            Long lastSyncTime = sharedPreferences.getLong(context.getString(R.string.last_sync_time), -1);
+            if(lastSyncTime == -1){
+                //this shouldn't happen by design
+                return null;
+            }
+            if(new Date(lastSyncTime).before(calendar.getTime())){//last sync is before three months
+                //sync again
+                String[] newValidTermValues = getValidTerms(context)[0];
+                String[] newValidTermNames = getValidTerms(context)[1];
+                String[] newValidMajorValues = getValidMajors(context)[0];
+                String[] newValidMajorNames = getValidMajors(context)[1];
+                storeDefaultCatalogInfo(context, newValidTermValues[0],/*latest valid term for default*/
+                        newValidTermValues, newValidTermNames, newValidMajorValues, newValidMajorNames);
+                validTermValues = newValidTermValues;//update old term values
+            }
+        }
+        defaultTerm = validTermValues[0];//set the latest valid term as the default term
+        return defaultTerm;
+    }
+
     //long running
     static String getCatalogHtml(String url, String preferredTerm, String major, String onlyOpenClasses){
         OkHttpClient client = new OkHttpClient();

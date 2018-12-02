@@ -36,11 +36,12 @@ import static com.jackz314.classregistrationhelper.Constants.COURSE_LIST_CHANGE_
 import static com.jackz314.classregistrationhelper.Constants.COURSE_REGISTER_STATUS_CHANGED;
 import static com.jackz314.classregistrationhelper.Constants.LOGIN_REQUEST_CODE;
 import static com.jackz314.classregistrationhelper.Constants.LOGIN_SUCCESS_CODE;
+import static com.jackz314.classregistrationhelper.CourseUtils.addToWorkerQueue;
 import static com.jackz314.classregistrationhelper.CourseUtils.fillCourseInfo;
 import static com.jackz314.classregistrationhelper.CourseUtils.getMyCoursesHtml;
+import static com.jackz314.classregistrationhelper.CourseUtils.getPreferredTerm;
 import static com.jackz314.classregistrationhelper.CourseUtils.getSavedCourseSelectionList;
 import static com.jackz314.classregistrationhelper.CourseUtils.processAndStoreMyCourses;
-import static com.jackz314.classregistrationhelper.MainActivity.getPreferredTerm;
 
 
 /**
@@ -319,6 +320,7 @@ public class MyCoursesFragment extends Fragment {
             if(swipeRefreshLayout != null){
                 swipeRefreshLayout.setRefreshing(false);
             }
+            addToWorkerQueue(getContext());
         }
     }
 
