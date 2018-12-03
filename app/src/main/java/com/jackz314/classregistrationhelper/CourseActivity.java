@@ -46,8 +46,10 @@ import okhttp3.Response;
 import static com.jackz314.classregistrationhelper.Constants.COURSE_CHANGE_TO_LIST_CODE;
 import static com.jackz314.classregistrationhelper.Constants.COURSE_LIST_CHANGE_CRN_KEY;
 import static com.jackz314.classregistrationhelper.Constants.COURSE_REGISTER_STATUS_CHANGED;
+import static com.jackz314.classregistrationhelper.CourseUtils.addToWorkerQueue;
 import static com.jackz314.classregistrationhelper.CourseUtils.dropCourses;
 import static com.jackz314.classregistrationhelper.CourseUtils.registerCourses;
+import static com.jackz314.classregistrationhelper.CourseUtils.removeFromMyList;
 
 public class CourseActivity extends AppCompatActivity {
 
@@ -60,7 +62,7 @@ public class CourseActivity extends AppCompatActivity {
     private enum CourseListStatus{
         NOT_ON_LIST, ON_LIST, REGISTERED
     }
-    private boolean selectionNeedToUpdateCatalog = false, registerNeedToUpdateCatalog = false;
+    private boolean listNeedToUpdateCatalog = false, registerNeedToUpdateCatalog = false;
     private CourseListStatus courseListStatus = CourseListStatus.NOT_ON_LIST;
     private TextView registerStatusText;
     private FloatingActionButton courseFab;
@@ -458,19 +460,19 @@ public class CourseActivity extends AppCompatActivity {
 
     @SuppressLint("ApplySharedPref")//to make sure that undo doesn't delete unnecessary stuff
     void addToList(){
-        selectionNeedToUpdateCatalog = !selectionNeedToUpdateCatalog;
+        listNeedToUpdateCatalog = !listNeedToUpdateCatalog;
         int startPos = urlForCourse.indexOf('?');
         String addToListStr = urlForCourse.substring(startPos);
 
         SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-        String myList = sharedPreferences.getString(getString(R.string.my_course_selection_list), null);
+        String myList = sharedPreferences.getString(getString(R.string.my_course_selection_urls), null);
         if(myList == null){
             //first time
             myList = addToListStr;
         }else {
             myList = myList + "-" + addToListStr;
         }
-        sharedPreferences.edit().putString(getString(R.string.my_course_selection_list), myList).commit();
+        sharedPreferences.edit().putString(getString(R.string.my_course_selection_urls), myList).commit();
 
         Set<String> crnSet = sharedPreferences.getStringSet(getString(R.string.my_selection_crn_set), null);
         if(crnSet == null) crnSet = Collections.singleton(courseCrn);//first one
@@ -480,21 +482,23 @@ public class CourseActivity extends AppCompatActivity {
             Log.i(TAG, aCrnSet + ",");
         }*/
         sharedPreferences.edit().putStringSet(getString(R.string.my_selection_crn_set), crnSet).commit();
-        if(selectionNeedToUpdateCatalog){
+        if(listNeedToUpdateCatalog){
             Intent intent = new Intent();
             intent.putExtra(COURSE_LIST_CHANGE_CRN_KEY, courseCrn);
             setResult(COURSE_CHANGE_TO_LIST_CODE, intent);
+
+            sharedPreferences.edit().putBoolean(getString(R.string.notified_all_errors), false).apply();
         }
         if(sharedPreferences.getBoolean(getString(R.string.pref_key_auto_check), true)
-                && !sharedPreferences.getBoolean(getString(R.string.started_alarm_manager), false)){
-
+                && !sharedPreferences.getBoolean(getString(R.string.started_course_worker), false)){
+            addToWorkerQueue(getApplicationContext());
         }
     }
 
     void undoAddToList(){
-        selectionNeedToUpdateCatalog = !selectionNeedToUpdateCatalog;
+        listNeedToUpdateCatalog = !listNeedToUpdateCatalog;
         SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-        String myList = sharedPreferences.getString(getString(R.string.my_course_selection_list), null);
+        String myList = sharedPreferences.getString(getString(R.string.my_course_selection_urls), null);
         if(myList == null) return;
         int startPos = myList.lastIndexOf('-');
         if(startPos == -1){
@@ -502,47 +506,35 @@ public class CourseActivity extends AppCompatActivity {
         }else {
             myList = myList.substring(0, Math.max(myList.length(), startPos));
         }
-        sharedPreferences.edit().putString(getString(R.string.my_course_selection_list), myList).apply();
+        sharedPreferences.edit().putString(getString(R.string.my_course_selection_urls), myList).apply();
 
         Set<String> crnSet = sharedPreferences.getStringSet(getString(R.string.my_selection_crn_set), null);
         if(crnSet == null) return;//not added yet, error
         else crnSet.remove(courseCrn);//remove from set
         sharedPreferences.edit().putStringSet(getString(R.string.my_selection_crn_set), crnSet).apply();
-        if(selectionNeedToUpdateCatalog){
+        if(listNeedToUpdateCatalog){
             Intent intent = new Intent();
             intent.putExtra(COURSE_LIST_CHANGE_CRN_KEY, courseCrn);
             setResult(COURSE_CHANGE_TO_LIST_CODE, intent);
+
+            sharedPreferences.edit().putBoolean(getString(R.string.notified_all_errors), false).apply();
         }else {
             setResult(RESULT_CANCELED);
         }
     }
 
     void removeFromList(){
-        selectionNeedToUpdateCatalog = !selectionNeedToUpdateCatalog;
-        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-        String myList = sharedPreferences.getString(getString(R.string.my_course_selection_list), null);
-        if(myList == null) return;
-        StringBuilder myListBuilder = new StringBuilder(myList);
-        int endPos = myListBuilder.indexOf(courseCrn);
-        if(endPos == -1) return;//not on list, shouldn't happen
-        int startPos = myListBuilder.lastIndexOf("-", endPos);
-        endPos += courseCrn.length();
-        if(startPos == -1){
-            myList = null;
-        }else {
-            myListBuilder.delete(startPos, endPos);
-            myList = myListBuilder.toString();
-        }
-        sharedPreferences.edit().putString(getString(R.string.my_course_selection_list), myList).apply();
+        listNeedToUpdateCatalog = !listNeedToUpdateCatalog;
 
-        Set<String> crnSet = sharedPreferences.getStringSet(getString(R.string.my_selection_crn_set), null);
-        if(crnSet == null) return;//nothing added yet, error
-        else crnSet.remove(courseCrn);//remove from set
-        sharedPreferences.edit().putStringSet(getString(R.string.my_selection_crn_set), crnSet).apply();
-        if(selectionNeedToUpdateCatalog){
+        removeFromMyList(courseCrn, getApplicationContext());
+
+        if(listNeedToUpdateCatalog){
             Intent intent = new Intent();
             intent.putExtra(COURSE_LIST_CHANGE_CRN_KEY, courseCrn);
             setResult(COURSE_CHANGE_TO_LIST_CODE, intent);
+
+            SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+            sharedPreferences.edit().putBoolean(getString(R.string.notified_all_errors), false).apply();
         }else {
             setResult(RESULT_CANCELED);
         }
@@ -550,25 +542,39 @@ public class CourseActivity extends AppCompatActivity {
 
     void addRegistrationStatus(){
         removeFromList();
+        registerNeedToUpdateCatalog = !registerNeedToUpdateCatalog;
         registerStatusText.setVisibility(View.VISIBLE);
         registerStatusText.setText("Registered Just now");
         courseFab.setImageResource(R.drawable.ic_register_done);
         courseListStatus = CourseListStatus.REGISTERED;
-        Intent intent = new Intent();
-        intent.putExtra(COURSE_LIST_CHANGE_CRN_KEY, courseCrn);
-        intent.putExtra(COURSE_REGISTER_STATUS_CHANGED, true);
-        setResult(COURSE_CHANGE_TO_LIST_CODE, intent);
+
+        if(registerNeedToUpdateCatalog){
+            Intent intent = new Intent();
+            intent.putExtra(COURSE_LIST_CHANGE_CRN_KEY, courseCrn);
+            intent.putExtra(COURSE_REGISTER_STATUS_CHANGED, true);
+            setResult(COURSE_CHANGE_TO_LIST_CODE, intent);
+
+            SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+            sharedPreferences.edit().putBoolean(getString(R.string.notified_all_errors), false).apply();
+        }
     }
 
     void removeRegistrationStatus(){
+        registerNeedToUpdateCatalog = !registerNeedToUpdateCatalog;
         registerStatusText.setText("");
         registerStatusText.setVisibility(View.GONE);
         courseFab.setImageResource(R.drawable.ic_add_to_list);
         courseListStatus = CourseListStatus.NOT_ON_LIST;
-        Intent intent = new Intent();
-        intent.putExtra(COURSE_LIST_CHANGE_CRN_KEY, courseCrn);
-        intent.putExtra(COURSE_REGISTER_STATUS_CHANGED, true);
-        setResult(COURSE_CHANGE_TO_LIST_CODE, intent);
+
+        if(registerNeedToUpdateCatalog){
+            Intent intent = new Intent();
+            intent.putExtra(COURSE_LIST_CHANGE_CRN_KEY, courseCrn);
+            intent.putExtra(COURSE_REGISTER_STATUS_CHANGED, true);
+            setResult(COURSE_CHANGE_TO_LIST_CODE, intent);
+
+            SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+            sharedPreferences.edit().putBoolean(getString(R.string.notified_all_errors), false).apply();
+        }
     }
 
     void registerCourse(){
@@ -700,7 +706,7 @@ public class CourseActivity extends AppCompatActivity {
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.menu_course, menu);
+        getMenuInflater().inflate(R.menu.menu_course_detail, menu);
         return true;
     }
 

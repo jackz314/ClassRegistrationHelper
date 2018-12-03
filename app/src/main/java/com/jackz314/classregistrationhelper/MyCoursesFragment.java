@@ -1,5 +1,7 @@
 package com.jackz314.classregistrationhelper;
 
+import android.animation.LayoutTransition;
+import android.app.SearchManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -8,11 +10,14 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.preference.PreferenceManager;
-import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -24,6 +29,8 @@ import java.util.List;
 import java.util.Objects;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.widget.SearchView;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -36,12 +43,14 @@ import static com.jackz314.classregistrationhelper.Constants.COURSE_LIST_CHANGE_
 import static com.jackz314.classregistrationhelper.Constants.COURSE_REGISTER_STATUS_CHANGED;
 import static com.jackz314.classregistrationhelper.Constants.LOGIN_REQUEST_CODE;
 import static com.jackz314.classregistrationhelper.Constants.LOGIN_SUCCESS_CODE;
-import static com.jackz314.classregistrationhelper.CourseUtils.addToWorkerQueue;
 import static com.jackz314.classregistrationhelper.CourseUtils.fillCourseInfo;
+import static com.jackz314.classregistrationhelper.CourseUtils.getAllSelectionCourseList;
 import static com.jackz314.classregistrationhelper.CourseUtils.getMyCoursesHtml;
 import static com.jackz314.classregistrationhelper.CourseUtils.getPreferredTerm;
-import static com.jackz314.classregistrationhelper.CourseUtils.getSavedCourseSelectionList;
+import static com.jackz314.classregistrationhelper.CourseUtils.getRegisterResultTexts;
+import static com.jackz314.classregistrationhelper.CourseUtils.getSavedCoursesList;
 import static com.jackz314.classregistrationhelper.CourseUtils.processAndStoreMyCourses;
+import static com.jackz314.classregistrationhelper.CourseUtils.registerCourses;
 
 
 /**
@@ -194,15 +203,15 @@ public class MyCoursesFragment extends Fragment {
                     }
                 }
             }
-            List<Course> savedCourses = getSavedCourseSelectionList(context);
+            List<Course> savedCourses = getSavedCoursesList(context);
             savedCourses = fillCourseInfo(context, savedCourses);
             if(savedCourses != null){
                 List<Course> combinedCourses = new LinkedList<>(savedCourses);
                 combinedCourses.addAll(registeredCourses);
-                for (Course course :
+                /*for (Course course :
                         combinedCourses) {
                     Log.i(TAG, "REFRESH: " + course.getNumber());
-                }
+                }*/
                 return combinedCourses;
             }else {
                 return registeredCourses;
@@ -218,6 +227,59 @@ public class MyCoursesFragment extends Fragment {
             fragment.swipeRefreshLayout.setRefreshing(false);
         }
     }
+
+    private static class RegisterAllCourseTask extends AsyncTask<Void, Void, List<String[]>>{
+
+        WeakReference<MyCoursesFragment> activityWeakReference;
+        AlertDialog progressDialog;
+
+        RegisterAllCourseTask(MyCoursesFragment fragment){
+            activityWeakReference = new WeakReference<>(fragment);
+        }
+
+        @Override
+        protected List<String[]> doInBackground(Void... voids) {
+            MyCoursesFragment fragment = activityWeakReference.get();
+
+            //progress dialog
+            LayoutInflater inflater = fragment.getLayoutInflater();
+            View customView = inflater.inflate(R.layout.progress_dialog_layout, null);
+            TextView dialogMsg = customView.findViewById(R.id.loading_msg);
+            dialogMsg.setText("Registering...");
+            Objects.requireNonNull(fragment.getActivity()).runOnUiThread(() ->
+                    progressDialog = new AlertDialog.Builder(Objects.requireNonNull(fragment.getContext()))
+                            .setView(customView)
+                            .setCancelable(false)
+                            .show());
+
+            return registerCourses(fragment.getContext());
+        }
+
+        @Override
+        protected void onPostExecute(List<String[]> errors) {
+            MyCoursesFragment fragment = activityWeakReference.get();
+            if(progressDialog != null){
+                progressDialog.dismiss();
+            }
+            AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(Objects.requireNonNull(fragment.getContext()))
+                    .setCancelable(true)
+                    .setPositiveButton("OK", (dialogInterface, i) -> progressDialog.dismiss());
+            if(errors == null){
+                dialogBuilder.setMessage(fragment.getString(R.string.toast_register_unknown_error));
+                //Toast.makeText(activity, activity.getString(R.string.toast_register_unknown_error), Toast.LENGTH_SHORT).show();
+            }else{
+                ArrayList<List<String>> courseList = getAllSelectionCourseList(fragment.getContext());
+                if(courseList != null){
+                    dialogBuilder.setMessage(getRegisterResultTexts(courseList.get(0), courseList.get(1), errors)[1]);
+                }else {
+                    dialogBuilder.setMessage(fragment.getString(R.string.toast_register_unknown_error));
+                }
+                //Toast.makeText(activity, activity.getString(R.string.toast_register_error) + errorArr[1], Toast.LENGTH_LONG).show();
+            }
+            Objects.requireNonNull(fragment.getActivity()).runOnUiThread(() -> progressDialog = dialogBuilder.show());
+        }
+    }
+
 
     public void refreshMyCoursesLocally(){
         List<Course> originalCourses = myListAdapter.getOriginalList();
@@ -236,14 +298,14 @@ public class MyCoursesFragment extends Fragment {
     }
 
     public void executeGetMyCourses(){
-        new GetMyListTask(this).execute();
+        new GetMyCoursesTask(this).execute();
     }
 
-    private static class GetMyListTask extends AsyncTask<Void, Void, List<Course>> {
+    private static class GetMyCoursesTask extends AsyncTask<Void, Void, List<Course>> {
 
         WeakReference<MyCoursesFragment> contextWeakReference;
 
-        GetMyListTask(MyCoursesFragment fragment){
+        GetMyCoursesTask(MyCoursesFragment fragment){
             contextWeakReference = new WeakReference<>(fragment);
         }
 
@@ -320,7 +382,6 @@ public class MyCoursesFragment extends Fragment {
             if(swipeRefreshLayout != null){
                 swipeRefreshLayout.setRefreshing(false);
             }
-            addToWorkerQueue(getContext());
         }
     }
 
@@ -378,6 +439,59 @@ public class MyCoursesFragment extends Fragment {
     }
 
     @Override
+    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
+        inflater.inflate(R.menu.menu_my_courses, menu);
+        SearchManager searchManager = (SearchManager) Objects.requireNonNull(getActivity()).getSystemService(Context.SEARCH_SERVICE);
+        SearchView searchView = (SearchView) menu.findItem(R.id.action_my_courses_search).getActionView();
+        searchView.setSearchableInfo(Objects.requireNonNull(searchManager).getSearchableInfo(getActivity().getComponentName()));
+        searchView.setIconifiedByDefault(true);
+        searchView.setMaxWidth(Integer.MAX_VALUE);
+        LinearLayout searchBar = searchView.findViewById(R.id.search_bar);
+        searchBar.setLayoutTransition(new LayoutTransition());
+        searchView.setQueryHint("Search in my courses...");
+        searchView.setClickable(false);
+        searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+            @Override
+            public boolean onQueryTextSubmit(String query) {
+                query(query);
+                return true;
+            }
+
+            @Override
+            public boolean onQueryTextChange(String query) {
+                query(query);
+                return true;
+            }
+
+        });
+
+        MenuItem searchMenuIem = menu.findItem(R.id.action_my_courses_search);
+        searchMenuIem.setOnActionExpandListener(new MenuItem.OnActionExpandListener() {
+            @Override
+            public boolean onMenuItemActionExpand(MenuItem menuItem) {
+                return true;
+            }
+
+            @Override
+            public boolean onMenuItemActionCollapse(MenuItem menuItem) {
+                return true;
+            }
+        });
+
+        super.onCreateOptionsMenu(menu, inflater);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+
+        if (item.getItemId() == R.id.action_try_register_all){
+            new RegisterAllCourseTask(this).execute();
+        }
+
+        return super.onOptionsItemSelected(item);
+    }
+
+    @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         if(requestCode == LOGIN_REQUEST_CODE){
             if(resultCode == LOGIN_SUCCESS_CODE){
@@ -390,7 +504,7 @@ public class MyCoursesFragment extends Fragment {
                     loadProgress.setVisibility(View.VISIBLE);
                     swipeRefreshLayout.setEnabled(true);
                     myCoursesRecyclerView.setVisibility(View.VISIBLE);
-                    new GetMyListTask(this).execute();
+                    new GetMyCoursesTask(this).execute();
                     onLoginSuccess();
                 }
             }

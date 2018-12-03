@@ -48,11 +48,11 @@ import okhttp3.Response;
 import okhttp3.ResponseBody;
 import okio.Buffer;
 
+import static com.jackz314.classregistrationhelper.AccountUtils.reauthorizeWithCastgc;
 import static com.jackz314.classregistrationhelper.Constants.CHANNEL_ID;
 import static com.jackz314.classregistrationhelper.Constants.COURSE_STUFF_WORKER_NAME;
 import static com.jackz314.classregistrationhelper.Constants.WORKER_IS_SUMMARY_JOB;
 import static com.jackz314.classregistrationhelper.Constants.WORKER_SHORTER_INTERVAL_DATA;
-import static com.jackz314.classregistrationhelper.LoginActivity.reauthorizeWithCastgc;
 
 public class CourseUtils {
 
@@ -65,6 +65,8 @@ public class CourseUtils {
         SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
         long repeatInterval = sharedPreferences.getLong(context.getString(R.string.pref_key_query_interval), 900);
         long shorterInterval = sharedPreferences.getLong(context.getString(R.string.pref_key_query_interval), -1);
+
+        sharedPreferences.edit().putBoolean(context.getString(R.string.started_course_worker), true).apply();//no repeats
 
         PeriodicWorkRequest.Builder workRequestBuilder;
         if(shorterInterval != -1){
@@ -116,7 +118,6 @@ public class CourseUtils {
 
     //interval is in seconds unit, not milliseconds
     static void addShorterIntervalRequests(long interval){
-        //todo schedule more alarms for shorter interval
         int requestCount = 900/(int)interval;
         Constraints constraints = new Constraints.Builder()
                 .setRequiredNetworkType(NetworkType.CONNECTED)
@@ -176,10 +177,10 @@ public class CourseUtils {
      */
     static Notification checkAndRegisterCourses(Context context){
         SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
-        String courseUrlsStr = sharedPreferences.getString(context.getString(R.string.my_course_selection_list), null);
+        String courseUrlsStr = sharedPreferences.getString(context.getString(R.string.my_course_selection_urls), null);
         if(courseUrlsStr == null) return null;
         String[] courseUrls = courseUrlsStr.split("-");//fast split for me haha
-        List<String> coursesToRegister = new LinkedList<>();
+        List<String> coursesToRegisterCrns = new LinkedList<>();
         List<String> coursesToRegisterNumbers = new LinkedList<>();
         for (String url :
                 courseUrls) {
@@ -189,23 +190,18 @@ public class CourseUtils {
                 int crnStartPos = url.indexOf("crn=");
                 if(crnStartPos == -1) throw new NullPointerException("Can't find CRN in url, shouldn't happen");
                 crnStartPos += 4;
-                coursesToRegister.add(url.substring(crnStartPos));
+                coursesToRegisterCrns.add(url.substring(crnStartPos));
                 coursesToRegisterNumbers.add(extractCourseNumberFromURL(url));
             }
         }
-        if(coursesToRegister.isEmpty()){//no courses available to register, sad
+        if(coursesToRegisterCrns.isEmpty()){//no courses available to register, sad
             return null;
         }
         if(sharedPreferences.getBoolean(context.getString(R.string.pref_key_auto_reg), true)){
-            List<String[]> registerResult = registerCourses(context, coursesToRegister);
-            if(registerResult.isEmpty()){
-                //success
-                return getRegisterSuccessNotification(coursesToRegister, coursesToRegisterNumbers, context);
-            }else {
-                return getRegisterErrorNotification(registerResult, context);
-            }
+            List<String[]> registerResult = registerCourses(context, coursesToRegisterCrns);
+            return getRegisterResultNotification(coursesToRegisterCrns, coursesToRegisterNumbers, registerResult, context);
         }else {
-            return getCoursesAvailableNotification(coursesToRegister, coursesToRegisterNumbers, context);
+            return getCoursesAvailableNotification(coursesToRegisterCrns, coursesToRegisterNumbers, context);
         }
     }
 
@@ -220,6 +216,32 @@ public class CourseUtils {
         int crsENumbEndPos = url.indexOf('&', crsENumbStartPos);
         if(crsENumbEndPos == -1) return "";
         return url.substring(subjCodeStartPos, subjCodeEndPos) + "-" + url.substring(crsENumbStartPos, crsENumbEndPos);
+    }
+
+    /**
+     * Get all courses on my list
+     *
+     * @param context to get resources
+     * @return A list of two lists. First list: all crns, second list: all course numbers. Null if no error occurred
+     */
+    static ArrayList<List<String>> getAllSelectionCourseList(Context context){
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
+        String courseUrlsStr = sharedPreferences.getString(context.getString(R.string.my_course_selection_urls), null);
+        if(courseUrlsStr == null) return null;
+        String[] courseUrls = courseUrlsStr.split("-");//fast split for me haha
+        List<String> crns = new LinkedList<>();
+        List<String> courseNumbers = new LinkedList<>();
+        for (String url : courseUrls) {
+            int crnStartPos = url.indexOf("crn=");
+            if(crnStartPos == -1) return null;
+            crnStartPos += 4;
+            crns.add(url.substring(crnStartPos));
+            courseNumbers.add(extractCourseNumberFromURL(url));
+        }
+        ArrayList<List<String>> list = new ArrayList<>();
+        list.add(crns);
+        list.add(courseNumbers);
+        return list;
     }
 
     /**
@@ -271,50 +293,18 @@ public class CourseUtils {
 
     static Notification getRegisterSuccessNotification(List<String> courseCrns, List<String> courseNumbers
             , Context context){
-        StringBuilder textBuilder = new StringBuilder("Successfully registered ");
-        textBuilder.append(Integer.toString(courseCrns.size())).append(" courses");
 
-        NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(context, CHANNEL_ID)
+        String[] resultTexts = getRegisterResultTexts(courseCrns, courseNumbers, null);
+
+        return new NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(R.mipmap.ic_launcher)
                 .setAutoCancel(true)
-                .setPriority(NotificationCompat.PRIORITY_DEFAULT);
-
-        notificationBuilder.setContentTitle(textBuilder.toString());
-
-        textBuilder = new StringBuilder();
-        for (int i = 0; i < courseCrns.size(); i++) {
-            String crn = courseCrns.get(i);
-            String courseNumber = courseNumbers.get(i);
-            textBuilder.append(courseNumber)
-                    .append('(').append(crn).append(')')
-                    .append(' ');
-        }
-        textBuilder.deleteCharAt(textBuilder.length() - 1);//remove the last space
-        notificationBuilder.setContentText(textBuilder.toString());
-
-        textBuilder = new StringBuilder();
-        for (int i = 0; i < courseCrns.size(); i++) {
-            String crn = courseCrns.get(i);
-            String courseNumber = courseNumbers.get(i);
-            textBuilder.append(courseNumber)
-                    .append('(').append(crn).append(')');
-            if(courseCrns.size() == 2){
-                if(i == 1){
-                    textBuilder.append(" and ");
-                }
-            }else if(courseCrns.size() > 2 && i < courseCrns.size() - 1){
-                if(i == courseCrns.size() - 2){
-                    textBuilder.append(", and");
-                }else {
-                    textBuilder.append(", ");
-                }
-            }
-        }
-        textBuilder.deleteCharAt(textBuilder.length() - 1);//remove the last line break
-        notificationBuilder.setStyle(new NotificationCompat.BigTextStyle()
-                .bigText(textBuilder.toString()));
-
-        return notificationBuilder.build();
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setContentTitle(resultTexts[0])
+                .setContentText(resultTexts[1])
+                .setStyle(new NotificationCompat.BigTextStyle()
+                .bigText(resultTexts[2]))
+                .build();
     }
 
     static Notification getCoursesAvailableNotification(List<String> courseCrns, List<String> courseNumbers
@@ -330,86 +320,237 @@ public class CourseUtils {
         notificationBuilder.setContentTitle(textBuilder.toString());
 
         textBuilder = new StringBuilder();
+        StringBuilder bigTextBuilder = new StringBuilder();
         for (int i = 0; i < courseCrns.size(); i++) {
             String crn = courseCrns.get(i);
             String courseNumber = courseNumbers.get(i);
             textBuilder.append(courseNumber)
-                    .append('(').append(crn).append(')');
+                    .append(" (").append(crn).append(')');
             if(courseCrns.size() == 2){
                 if(i == 1){
                     textBuilder.append(" and ");
                 }
             }else if(courseCrns.size() > 2 && i < courseCrns.size() - 1){
                 if(i == courseCrns.size() - 2){
-                    textBuilder.append(", and");
+                    textBuilder.append(", and ");
                 }else {
                     textBuilder.append(", ");
                 }
             }
+
+            bigTextBuilder.append(courseNumber)
+                    .append(" (").append(crn).append(")\n");
         }
-        textBuilder.delete(textBuilder.length() - 2, textBuilder.length());//remove the last space
         notificationBuilder.setContentText(textBuilder.toString());
 
-        textBuilder = new StringBuilder();
-        for (int i = 0; i < courseCrns.size(); i++) {
-            String crn = courseCrns.get(i);
-            String courseNumber = courseNumbers.get(i);
-            textBuilder.append(courseNumber)
-                    .append('(').append(crn).append(')')
-                    .append('\n');
-        }
-        textBuilder.deleteCharAt(textBuilder.length() - 1);//remove the last line break
+        bigTextBuilder.deleteCharAt(bigTextBuilder.length() - 1);//remove the last line break
         notificationBuilder.setStyle(new NotificationCompat.BigTextStyle()
-                .bigText(textBuilder.toString()));
+                .bigText(bigTextBuilder.toString()));
 
         return notificationBuilder.build();
     }
 
-    static Notification getRegisterErrorNotification(List<String[]> registerResults, Context context){
-        StringBuilder textBuilder = new StringBuilder("Registering classes failed for ");
-        textBuilder.append(Integer.toString(registerResults.size())).append(" courses");
+    static Notification getRegisterErrorNotification(List<String> courseNumbers, List<String[]> registerErrors, Context context){
 
-        NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(context, CHANNEL_ID)
+        String[] resultTexts = getRegisterResultTexts(null, courseNumbers, registerErrors);
+
+        return new NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(R.mipmap.ic_launcher)
                 .setAutoCancel(true)
-                .setPriority(NotificationCompat.PRIORITY_MAX);
+                .setPriority(NotificationCompat.PRIORITY_MAX)
+                .setContentTitle(resultTexts[0])
+                .setContentText(resultTexts[1])
+                .setStyle(new NotificationCompat.BigTextStyle()
+                    .bigText(resultTexts[2]))
+                .build();
+    }
 
-        notificationBuilder.setContentTitle(textBuilder.toString());
-
-        textBuilder = new StringBuilder();
-        for (int i = 0; i < registerResults.size(); i++) {
-            String crn = registerResults.get(i)[0];
-            String failedReason = registerResults.get(i)[1];
-            textBuilder.append(crn)
-                    .append(':').append(failedReason);
-            if(registerResults.size() == 2){
-                if(i == 1){
-                    textBuilder.append(" and ");
+    static Notification getRegisterResultNotification(List<String> allCourseCrns, List<String> allCourseNumbers, List<String[]> registerErrors, Context context){
+        if(allCourseCrns.size() == registerErrors.size()){
+            //all registers failed
+            SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
+            if(!sharedPreferences.getBoolean(context.getString(R.string.notified_all_errors), false)){
+                sharedPreferences.edit().putBoolean(context.getString(R.string.notified_all_errors), true).apply();
+                return getRegisterErrorNotification(allCourseNumbers, registerErrors, context);
+            }else {
+                //update registered courses see if it changed since last try, if changed, notify, otherwise go away and don't make a sound
+                processAndStoreRegisteredCourses(getMyCoursesHtml(context), context);
+                if(!sharedPreferences.getBoolean(context.getString(R.string.notified_all_errors), false)){
+                    sharedPreferences.edit().putBoolean(context.getString(R.string.notified_all_errors), true).apply();
+                    return getRegisterErrorNotification(allCourseNumbers, registerErrors, context);
                 }
-            }else if(registerResults.size() > 2 && i < registerResults.size() - 1){
-                if(i == registerResults.size() - 2){
-                    textBuilder.append(", and");
-                }else {
-                    textBuilder.append(", ");
-                }
+                return null;//already notified of the errors before, don't do it again until user changes something about the courses
             }
-        }
-        textBuilder.deleteCharAt(textBuilder.length() - 1);//remove the last space
-        notificationBuilder.setContentText(textBuilder.toString());
+        }else if(registerErrors.isEmpty()){
+            //all registers succeed
+            return getRegisterSuccessNotification(allCourseCrns, allCourseNumbers, context);
+        }else {
+            String[] resultTexts = getRegisterResultTexts(allCourseCrns, allCourseNumbers, registerErrors);
 
-        textBuilder = new StringBuilder();
-        for (int i = 0; i < registerResults.size(); i++) {
-            String crn = registerResults.get(i)[0];
-            String failedReason = registerResults.get(i)[1];
-            textBuilder.append(crn)
-                    .append(':').append(failedReason)
-                    .append('\n');
-        }
-        textBuilder.deleteCharAt(textBuilder.length() - 1);//remove the last line break
-        notificationBuilder.setStyle(new NotificationCompat.BigTextStyle()
-                .bigText(textBuilder.toString()));
+            NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(context, CHANNEL_ID);
+            notificationBuilder.setAutoCancel(true)
+                    .setSmallIcon(R.mipmap.ic_launcher)
+                    .setPriority(NotificationCompat.PRIORITY_MAX)
+                    .setContentTitle(resultTexts[0]);
 
-        return notificationBuilder.build();
+            notificationBuilder.setContentText(resultTexts[1]);
+            notificationBuilder.setStyle(new NotificationCompat.BigTextStyle()
+                    .bigText(resultTexts[2]));
+
+            return notificationBuilder.build();
+        }
+    }
+
+    static String[] getRegisterResultTexts(List<String> allCourseCrns, List<String> allCourseNumbers, List<String[]> registerErrors){
+        if(registerErrors == null || registerErrors.isEmpty()){
+            //all registers succeed
+            StringBuilder textBuilder = new StringBuilder();
+            StringBuilder bigTextBuilder = new StringBuilder();
+
+            for (int i = 0; i < allCourseCrns.size(); i++) {
+                String crn = allCourseCrns.get(i);
+                String courseNumber = allCourseNumbers.get(i);
+                textBuilder.append(courseNumber)
+                        .append(" (").append(crn).append(')');
+                if(allCourseCrns.size() == 2){
+                    if(i == 1){
+                        textBuilder.append(" and ");
+                    }
+                }else if(allCourseCrns.size() > 2 && i < allCourseCrns.size() - 1){
+                    if(i == allCourseCrns.size() - 2){
+                        textBuilder.append(", and ");
+                    }else {
+                        textBuilder.append(", ");
+                    }
+                }
+
+                bigTextBuilder.append(courseNumber)
+                        .append(" (").append(crn).append(")\n");
+            }
+            bigTextBuilder.deleteCharAt(bigTextBuilder.length() - 1);//remove last line break
+
+            return new String[]{"Successfully registered " + Integer.toString(allCourseCrns.size()) + " courses"
+                    , textBuilder.toString(), bigTextBuilder.toString()};
+        }else if(allCourseCrns == null || allCourseCrns.size() == registerErrors.size()){
+            //all registers failed
+            StringBuilder textBuilder = new StringBuilder();
+            StringBuilder bigTextBuilder = new StringBuilder();
+            for (int i = 0; i < registerErrors.size(); i++) {
+                String crn = registerErrors.get(i)[0];
+                String failedReason = registerErrors.get(i)[1];
+                String courseNumber = allCourseNumbers.get(i);
+                textBuilder.append(courseNumber)
+                        .append(" (").append(crn).append(')')
+                        .append(": ").append(failedReason);
+                if(registerErrors.size() == 2){
+                    if(i == 1){
+                        textBuilder.append(" and ");
+                    }
+                }else if(registerErrors.size() > 2 && i < registerErrors.size() - 1){
+                    if(i == registerErrors.size() - 2){
+                        textBuilder.append(", and ");
+                    }else {
+                        textBuilder.append(", ");
+                    }
+                }
+
+                bigTextBuilder.append(courseNumber)
+                        .append(" (").append(crn).append(')')
+                        .append(": ").append(failedReason)
+                        .append('\n');
+            }
+            bigTextBuilder.deleteCharAt(bigTextBuilder.length() - 1);//remove the last line break
+            return new String[]{"Failed to register " + Integer.toString(registerErrors.size()) + " courses",
+                    textBuilder.toString(), bigTextBuilder.toString()};
+        }else {
+            List<String> successCourseCrns = allCourseCrns;
+            List<String> successCourseNumbers = allCourseNumbers;
+            List<String> failedCourseCrns = new LinkedList<>();
+            List<String> failedCourseNumbers = new LinkedList<>();
+            List<String> failedCourseReasons = new LinkedList<>();
+            for(int i = 0; i < registerErrors.size(); i++){
+                String errorCourseCrn = registerErrors.get(i)[0];
+                String errorCourseReason = registerErrors.get(i)[1];
+                int errorCourseNumberIndex = allCourseCrns.indexOf(errorCourseCrn);
+                if(errorCourseNumberIndex == -1) break;//something went wrong, I'm out
+                String errorCourseNumber = allCourseNumbers.get(errorCourseNumberIndex);
+                failedCourseCrns.add(errorCourseCrn);
+                failedCourseReasons.add(errorCourseReason);
+                failedCourseNumbers.add(errorCourseNumber);
+                successCourseCrns.remove(errorCourseCrn);
+                successCourseNumbers.remove(errorCourseNumberIndex);
+            }
+
+            StringBuilder textBuilder = new StringBuilder();
+            StringBuilder bigTextBuilder = new StringBuilder();
+            for (int i = 0; i < successCourseCrns.size(); i++) {
+                String successCourseCrn = successCourseCrns.get(i);
+                String successCourseNumber = successCourseNumbers.get(i);
+                textBuilder.append(successCourseNumber)
+                        .append(" (").append(successCourseCrn)
+                        .append("): success");
+                if(successCourseCrns.size() == 2){
+                    if(i == 1){
+                        textBuilder.append(" and ");
+                    }
+                }else if(successCourseCrns.size() > 2 && i < successCourseCrns.size() - 1){
+                    if(i == successCourseCrns.size() - 2){
+                        textBuilder.append(", and ");
+                    }else {
+                        textBuilder.append(", ");
+                    }
+                }
+
+                bigTextBuilder.append(successCourseNumber)
+                        .append(" (").append(successCourseCrn).append("): success\n");
+            }
+
+            textBuilder.append(". ");
+
+            for (int i = 0; i < failedCourseCrns.size(); i++) {
+                String failedCourseCrn = failedCourseCrns.get(i);
+                String failedCourseNumber = failedCourseNumbers.get(i);
+                String failedCourseReason = failedCourseReasons.get(i);
+                textBuilder.append(failedCourseNumber)
+                        .append(" (").append(failedCourseCrn).append(')')
+                        .append(": ").append(failedCourseReason);
+                if(registerErrors.size() == 2){
+                    if(i == 1){
+                        textBuilder.append(" and ");
+                    }
+                }else if(registerErrors.size() > 2 && i < registerErrors.size() - 1){
+                    if(i == registerErrors.size() - 2){
+                        textBuilder.append(", and ");
+                    }else {
+                        textBuilder.append(", ");
+                    }
+                }
+
+                bigTextBuilder.append(failedCourseNumber)
+                        .append(" (").append(failedCourseCrn).append(')')
+                        .append(": ").append(failedCourseReason)
+                        .append('\n');
+            }
+
+            bigTextBuilder.deleteCharAt(bigTextBuilder.length() - 1);//remove the last line break
+
+            String titleText = "Successfully registered " +
+                    Integer.toString(successCourseCrns.size()) +
+                    " courses and failed to register " +
+                    Integer.toString(failedCourseCrns.size()) +
+                    " courses";
+            return new String[]{titleText, textBuilder.toString(), bigTextBuilder.toString()};
+        }
+    }
+
+    static Notification getUnknownErrorNotification(Context context){
+        return new NotificationCompat.Builder(context, CHANNEL_ID)
+                .setAutoCancel(true)
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setContentTitle(context.getString(R.string.notif_unknown_err_title))
+                .setContentText(context.getString(R.string.notif_unknown_err_content))
+                .build();
     }
 
     //MyCourses Related
@@ -502,7 +643,19 @@ public class CourseUtils {
         }
     }
 
-    static List<Course> processAndStoreMyCourses(String htmlResponse, Context context){
+    static void storeRegisteredCrns(Set<String> registeredCrnSet, Context context){
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
+
+        Set<String> oldRegisteredCrnSet = sharedPreferences.getStringSet(context.getString(R.string.my_registered_crn_set), new HashSet<>());
+        if(!registeredCrnSet.equals(oldRegisteredCrnSet)){
+            //courses registered changed, notify all mistakes again
+            sharedPreferences.edit().putBoolean(context.getString(R.string.notified_all_errors), false).apply();
+        }
+
+        sharedPreferences.edit().putStringSet(context.getString(R.string.my_registered_crn_set), registeredCrnSet).apply();
+    }
+
+    static List<Course> processAndStoreRegisteredCourses(String htmlResponse, Context context){
         Document document = Jsoup.parse(htmlResponse);
         //crn part
         Elements registeredCoursesElements = document.select("[summary=\"current schedule\"] [NAME=\"CRN_IN\"]");
@@ -516,8 +669,7 @@ public class CourseUtils {
             registeredCrnSet.add(crn);
         }
 
-        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
-        sharedPreferences.edit().putStringSet(context.getString(R.string.my_registered_crn_set), registeredCrnSet).apply();
+        storeRegisteredCrns(registeredCrnSet, context);
 
         //registered status time part
         registeredCoursesElements = document.select("[summary=\"current schedule\"] [NAME=\"MESG\"]");
@@ -542,10 +694,18 @@ public class CourseUtils {
             course.setRegisterStatus(registerStatus);
             registeredCourses.set(i, course);
         }
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
         sharedPreferences.edit().putString(context.getString(R.string.my_course_registered_status_list), registeredTimeList.toString()).apply();
 
+        return registeredCourses;
+    }
+
+    static List<Course> processAndStoreMyCourses(String htmlResponse, Context context){
+
+        List<Course> registeredCourses = processAndStoreRegisteredCourses(htmlResponse, context);
+
         //saved course selection list part
-        List<Course> savedCourses = getSavedCourseSelectionList(context);
+        List<Course> savedCourses = getSavedCoursesList(context);
         if(savedCourses != null){
             registeredCourses.addAll(0, savedCourses);
         }
@@ -554,11 +714,11 @@ public class CourseUtils {
     }
 
     //Note: returned courses aren't fully filled to be functional yet, they only contain crn
-    static List<Course> getSavedCourseSelectionList(Context context){
+    static List<Course> getSavedCoursesList(Context context){
         SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
-        String savedList = sharedPreferences.getString(context.getString(R.string.my_course_selection_list), null);
+        String savedList = sharedPreferences.getString(context.getString(R.string.my_course_selection_urls), null);
         if(savedList != null && !savedList.isEmpty()){
-            List<String> savedCrns = getCrnListFromSavedList(savedList);
+            List<String> savedCrns = getSavedCourseCrnsList(savedList);
             List<Course> savedCourses = new LinkedList<>();
             if(!savedCrns.isEmpty()){
                 for (int i = 0; i < savedCrns.size(); i++) {//put saved list at first
@@ -671,7 +831,7 @@ public class CourseUtils {
         return filledCourses;
     }
 
-    static List<String> getCrnListFromSavedList(String list){
+    static List<String> getSavedCourseCrnsList(String list){
         String[] savedArray = list.split("-");
         List<String> crnList = new LinkedList<>();
         for (String savedItem : savedArray) {
@@ -709,7 +869,7 @@ public class CourseUtils {
         Set<String> registerCrnSet;
         if(specificCourses != null && !specificCourses.isEmpty()){
             registerCrnSet = specificCourses;
-        }else {
+        }else {//if not specified, register all courses in the stored selection list
             SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
             registerCrnSet = sharedPreferences.getStringSet(context.getString(R.string.my_selection_crn_set), null);
             if(registerCrnSet == null || registerCrnSet.isEmpty()) return null;
@@ -859,8 +1019,16 @@ public class CourseUtils {
             //messages like "Duplicate CRN", "Class is full" or something like that
 
             List<String[]> errors = getErrorsFromRegistrationResponse(htmlResponse);
-            if(errors.isEmpty()){
-                //todo update stored lists and registered courses and other stuff
+            //todo update stored lists and registered courses and other stuff
+            List<String> errorCrns = new LinkedList<>();
+            for(int i = 0; i < errors.size(); i++){
+                errorCrns.add(errors.get(i)[0]);
+            }
+            for (String registerCrn : registerCrnSet) {
+                if(!errorCrns.contains(registerCrn)){
+                    //register succeed for this course, remove it from the list
+                    removeFromMyList(registerCrn, context);
+                }
             }
             return errors;
 
@@ -1051,6 +1219,30 @@ public class CourseUtils {
             errors.add(errorArray);
         }
         return errors;
+    }
+
+    static void removeFromMyList(String courseCrn, Context context){
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
+
+        Set<String> crnSet = sharedPreferences.getStringSet(context.getString(R.string.my_selection_crn_set), null);
+        if(crnSet == null) return;//nothing added yet, error
+        else crnSet.remove(courseCrn);//remove from set
+        sharedPreferences.edit().putStringSet(context.getString(R.string.my_selection_crn_set), crnSet).apply();
+
+        String myList = sharedPreferences.getString(context.getString(R.string.my_course_selection_urls), null);
+        if(myList == null) return;
+        StringBuilder myListBuilder = new StringBuilder(myList);
+        int endPos = myListBuilder.indexOf(courseCrn);
+        if(endPos == -1) return;//not on list, shouldn't happen
+        int startPos = myListBuilder.lastIndexOf("-", endPos);
+        endPos += courseCrn.length();
+        if(startPos == -1){
+            myList = null;
+        }else {
+            myListBuilder.delete(startPos, endPos);
+            myList = myListBuilder.toString();
+        }
+        sharedPreferences.edit().putString(context.getString(R.string.my_course_selection_urls), myList).apply();
     }
 
     static RequestBody modifyRequestBody(RequestBody requestBody, String name, String value){
