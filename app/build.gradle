@@ -32,7 +32,9 @@ dependencies {
     implementation 'com.github.bumptech.glide:glide:4.8.0'//internet photo processing
     implementation 'androidx.recyclerview:recyclerview:1.0.0'
     def work_version = "1.0.0-alpha11"//worker manager
-    implementation "android.arch.work:work-runtime:$work_version"
+    implementation ("android.arch.work:work-runtime:$work_version"){
+        exclude group: 'com.google.guava', module: 'listenablefuture'
+    }
     annotationProcessor 'com.github.bumptech.glide:compiler:4.8.0'
     api('com.google.guava:guava:27.0-android') { exclude group: "com.google.guava" }
     implementation 'org.jsoup:jsoup:1.11.3'//html parsing

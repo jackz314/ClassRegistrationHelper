@@ -4,14 +4,20 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.view.MenuItem;
+import android.widget.ImageView;
 import android.widget.TextView;
 
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.request.RequestOptions;
 import com.google.android.material.navigation.NavigationView;
 import com.google.android.material.tabs.TabLayout;
+
+import java.lang.ref.WeakReference;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBarDrawerToggle;
@@ -21,6 +27,7 @@ import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.viewpager.widget.ViewPager;
 
+import static com.jackz314.classregistrationhelper.AccountUtils.getProfilePicByteArr;
 import static com.jackz314.classregistrationhelper.Constants.CHANNEL_ID;
 
 public class MainActivity extends AppCompatActivity
@@ -35,6 +42,7 @@ public class MainActivity extends AppCompatActivity
     TabLayout tabLayout;
     TextView navHeaderTitle;
     TextView navHeaderSubtitle;
+    ImageView navHeaderProfilePic;
     boolean myCoursesLoadFinished = false, catalogLoadFinished = false;
 
     @Override
@@ -68,6 +76,7 @@ public class MainActivity extends AppCompatActivity
         navigationView.setNavigationItemSelectedListener(this);
         navHeaderTitle = navigationView.getHeaderView(0).findViewById(R.id.nav_header_title);
         navHeaderSubtitle = navigationView.getHeaderView(0).findViewById(R.id.nav_header_subtitle);
+        navHeaderProfilePic = navigationView.getHeaderView(0).findViewById(R.id.nav_header_profile_pic);
         sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
         setNavHeaderInfo();
     }
@@ -150,6 +159,7 @@ public class MainActivity extends AppCompatActivity
             String subText = navSubStr + "@ucmerced.edu";
             navHeaderSubtitle.setText(subText);
         }
+        new GetProfilePicTask(this).execute();
     }
 
     private void createNotificationChannel() {
@@ -165,6 +175,36 @@ public class MainActivity extends AppCompatActivity
             // or other notification behaviors after this
             NotificationManager notificationManager = getSystemService(NotificationManager.class);
             notificationManager.createNotificationChannel(channel);
+        }
+    }
+
+    static class GetProfilePicTask extends AsyncTask<Void, Void, byte[]> {
+
+        private WeakReference<MainActivity> weakReference;
+
+        GetProfilePicTask(MainActivity activity){
+            weakReference = new WeakReference<>(activity);
+        }
+
+        @Override
+        protected byte[] doInBackground(Void... voids) {
+            return getProfilePicByteArr(weakReference.get());
+        }
+
+        @Override
+        protected void onPostExecute(byte[] bytes) {
+            MainActivity activity = weakReference.get();
+
+            RequestOptions requestOptions = new RequestOptions()
+                    .placeholder(R.mipmap.ic_launcher)
+                    .error(R.mipmap.ic_launcher);
+
+            Glide.with(activity)
+                    .setDefaultRequestOptions(requestOptions)
+                    .asBitmap()
+                    .apply(RequestOptions.circleCropTransform())
+                    .load(bytes)
+                    .into(activity.navHeaderProfilePic);
         }
     }
 

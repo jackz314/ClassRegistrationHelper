@@ -649,7 +649,7 @@ public class Course implements Parcelable {
                 }
                 for (int i = 0; i < additionalRestrictions.size(); i++) {
                     String additionalRestriction = additionalRestrictions.get(i);
-                    combinedText.append(Integer.toString(i)).append(". ");//1. xxxx 2. xxxx
+                    combinedText.append(Integer.toString(i)).append(". ");//1. xxxx rootcrt. xxxx
                     combinedText.append(additionalRestriction);
                     if(additionalRestrictions.size() != 1 && i != additionalRestrictions.size() - 1){
                         combinedText.append('\n');

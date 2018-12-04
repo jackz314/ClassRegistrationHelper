@@ -1316,7 +1316,7 @@ public class CourseUtils {
      * Get all valid majors from website
      *
      * @param context run time context
-     * @return String[][] with 2 sub String[]
+     * @return String[][] with rootcrt sub String[]
      * first one is a String[] with major's values like "CSE"
      * second one is a String[] with major's names like "Computer Science and Engineering"
      */

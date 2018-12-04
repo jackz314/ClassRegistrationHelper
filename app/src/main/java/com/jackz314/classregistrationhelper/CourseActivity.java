@@ -166,7 +166,7 @@ public class CourseActivity extends AppCompatActivity {
                         courseBuilder.addAdditionalRestriction(restrictionElement.select("[class=dedefault]").text());
                     }
                 }
-                       /* .setLevelRestrictionYes(restrictionElements.get(2).child(0).children().eachText().subList(1, restrictionElements.get(2).child(0).children().eachText().size()))//store each level into list
+                       /* .setLevelRestrictionYes(restrictionElements.get(rootcrt).child(0).children().eachText().subList(1, restrictionElements.get(rootcrt).child(0).children().eachText().size()))//store each level into list
                         .setLevelRestrictionNo(restrictionElements.get(3).child(0).children().eachText().subList(1, restrictionElements.get(3).children().eachText().size()))
                         .setPrerequisite(restrictionElements.get(4).child(0).select("[class=dedefault]").text())
                         .setOfferedTerms(restrictionElements.get(5).text());*/

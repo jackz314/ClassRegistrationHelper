@@ -4,7 +4,7 @@
     <string name="navigation_drawer_close">Close navigation drawer</string>
     <string name="nav_header_title">User Name</string>
     <string name="nav_header_subtitle">user id</string>
-    <string name="nav_header_desc">Navigation header</string>
+    <string name="nav_header_desc">Profile picture</string>
     <string name="action_settings">Settings</string>
 
     <string name="toast_internet_error">Can\'t connect to the internet, please try again later</string>
@@ -27,8 +27,10 @@
     <string name="get_my_list_url">https://mystudentrecord.ucmerced.edu/pls/PROD/bwskfreg.P_AltPin</string>
     <string name="register_courses_url">https://mystudentrecord.ucmerced.edu/pls/PROD/bwckcoms.P_Regs</string>
     <!-- Sign in URLs -->
-    <string name="sign_in_request_url">https://cas.ucmerced.edu/cas/login?service=https%3a//mystudentrecord.ucmerced.edu/pls/PROD/twbkwbis.P_WWWLogin%3fret_code%3d</string>
-
+    <string name="register_cas_request_url">https://cas.ucmerced.edu/cas/login?service=https%3a//mystudentrecord.ucmerced.edu/pls/PROD/twbkwbis.P_WWWLogin%3fret_code%3d</string>
+    <string name="profile_cas_request_url">https://cas.ucmerced.edu/cas/login?service=https%3A%2F%2Ficatcard.ucmerced.edu%2Fmobileid%2Fprofile.php</string>
+    <!-- Profile Pic URLs -->
+    <string name="get_profile_url">https://icatcard.ucmerced.edu/mobileid/profile.php</string>
 
     <string name="disclaimer_text">Your account information will only be used for accessing your course list and registering classes. It will not be shared with any third party.\n
         All communication are established solely with UCM servers and are conducted with standard HTTPS protocols, but that does not mean all risky factors are eliminated. Use at your own risk</string>
@@ -43,6 +45,11 @@
     <string name="user_student_id">user_student_id</string>
     <string name="username">username</string>
     <string name="password">password</string>
+
+    <string name="perm_get_profile_session_url">perm_get_profile_session_url</string>
+    <string name="profile_castgc_cookie">profile_castgc_cookie</string>
+    <string name="profile_session_for_id">profile_session_for_id</string>
+    <string name="profile_pic_url">profile_pic_url</string>
 
     <!-- Course list storage stuff -->
     <string name="my_course_selection_urls">my_course_selection_list</string>

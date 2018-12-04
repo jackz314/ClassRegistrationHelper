@@ -6,7 +6,7 @@
         android:id="@+id/action_try_register_all"
         android:icon="@drawable/ic_register_24dp"
         android:title="Try register all"
-        app:showAsAction="collapseActionView|ifRoom"/>
+        app:showAsAction="collapseActionView|always"/>
 
     <item
         android:id="@+id/action_my_courses_search"

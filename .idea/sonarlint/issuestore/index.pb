@@ -29,8 +29,6 @@ X
 (app/src/main/res/layout/app_bar_main.xml,6\f\6f97cd8a191d695dc0396291b7e88ceff15e43bb
 ^
 .app/src/main/res/menu/activity_main_drawer.xml,a\8\a874acbd348e069027d5c3df7eceb1a0bba28be9
-U
-%app/src/main/res/menu/menu_course.xml,9\9\995be04e51d08ecc6d6ac191aea342a266c06216
 R
 "app/src/main/res/values/dimens.xml,c\3\c3c1811dec2dbad2deeafb9aad505ca9631da740
 T
