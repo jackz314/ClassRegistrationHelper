@@ -72,6 +72,8 @@ public class CatalogFragment extends Fragment {
     private SharedPreferences sharedPreferences;
     private ProgressBar loadProgress;
 
+    private String mQuery = null;
+
     private CatalogOnFragmentInteractionListener mListener;
 
     public CatalogFragment() {
@@ -253,10 +255,9 @@ public class CatalogFragment extends Fragment {
                 }
             }
             courseCatalogAdapter.swapNewDataSet(courses);
-            /*String existingQuery = courseCatalogAdapter.getQuery();
-            if(existingQuery != null){
-                courseCatalogAdapter.getFilter().filter(existingQuery);
-            }*/
+            if(mQuery != null && !mQuery.isEmpty()){
+                query(mQuery);
+            }
         }else {
             Log.e(TAG, "REFRESH LIST FAILED. CATALOG ADAPTER IS NULL");
         }
@@ -299,6 +300,7 @@ public class CatalogFragment extends Fragment {
     }*///using view is depreciated
 
     public void query(String query){
+        mQuery = query;
         if(courseCatalogAdapter != null){
             courseCatalogAdapter.getFilter().filter(query);
         }else if(courseCatalogRecyclerView != null){
@@ -311,16 +313,14 @@ public class CatalogFragment extends Fragment {
 
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
-        if(requestCode == COURSE_DETAIL_REQUEST_CODE && resultCode == COURSE_CHANGE_TO_LIST_CODE){
-            if(data != null){
-                String crn = data.getStringExtra(COURSE_LIST_CHANGE_CRN_KEY);
-                if(crn != null){
-                    refreshCatalogListWithStatusChange(crn);
-                    if(data.getBooleanExtra(COURSE_REGISTER_STATUS_CHANGED, false)){
-                        onListStatusStatusChanged(true);
-                    }else {
-                        onListStatusStatusChanged(false);
-                    }
+        if(requestCode == COURSE_DETAIL_REQUEST_CODE && resultCode == COURSE_CHANGE_TO_LIST_CODE && data != null){
+            String crn = data.getStringExtra(COURSE_LIST_CHANGE_CRN_KEY);
+            if(crn != null){
+                refreshCatalogListWithStatusChange(crn);
+                if(data.getBooleanExtra(COURSE_REGISTER_STATUS_CHANGED, false)){
+                    onListStatusStatusChanged(true);
+                }else {
+                    onListStatusStatusChanged(false);
                 }
             }
         }
@@ -354,7 +354,6 @@ public class CatalogFragment extends Fragment {
         LinearLayout searchBar = searchView.findViewById(R.id.search_bar);
         searchBar.setLayoutTransition(new LayoutTransition());
         searchView.setQueryHint("Search for classes...");
-        searchView.setClickable(false);
         searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
             @Override
             public boolean onQueryTextSubmit(String query) {

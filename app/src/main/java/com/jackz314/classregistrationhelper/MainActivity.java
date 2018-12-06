@@ -20,6 +20,7 @@ import com.google.android.material.tabs.TabLayout;
 import java.lang.ref.WeakReference;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.ActionBarDrawerToggle;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
@@ -29,6 +30,10 @@ import androidx.viewpager.widget.ViewPager;
 
 import static com.jackz314.classregistrationhelper.AccountUtils.getProfilePicByteArr;
 import static com.jackz314.classregistrationhelper.Constants.CHANNEL_ID;
+import static com.jackz314.classregistrationhelper.Constants.LOGIN_REQUEST_CODE;
+import static com.jackz314.classregistrationhelper.Constants.LOGIN_SUCCESS_CODE;
+import static com.jackz314.classregistrationhelper.Constants.LOGOUT_REQUEST_CODE;
+import static com.jackz314.classregistrationhelper.Constants.LOGOUT_SUCCESS_CODE;
 
 public class MainActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener, CatalogFragment.CatalogOnFragmentInteractionListener, MyCoursesFragment.MyCoursesOnFragmentInteractionListener {
@@ -49,7 +54,7 @@ public class MainActivity extends AppCompatActivity
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        Toolbar toolbar = findViewById(R.id.toolbar);
+        Toolbar toolbar = findViewById(R.id.account_toolbar);
         setSupportActionBar(toolbar);
 
        /* FloatingActionButton fab = findViewById(R.id.fab);
@@ -89,6 +94,21 @@ public class MainActivity extends AppCompatActivity
         } else {
             super.onBackPressed();
         }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        if(requestCode == LOGOUT_REQUEST_CODE && resultCode == LOGOUT_SUCCESS_CODE){
+            recreate();
+        }
+        if(requestCode == LOGIN_REQUEST_CODE && resultCode == LOGIN_SUCCESS_CODE){
+            myCoursesFragment = (MyCoursesFragment)getSupportFragmentManager().getFragments().get(0);
+            if(myCoursesFragment != null){
+                myCoursesFragment.processLoginResult();
+            }
+            setNavHeaderInfo();
+        }
+        super.onActivityResult(requestCode, resultCode, data);
     }
 
     /*@Override
@@ -159,7 +179,10 @@ public class MainActivity extends AppCompatActivity
             String subText = navSubStr + "@ucmerced.edu";
             navHeaderSubtitle.setText(subText);
         }
-        new GetProfilePicTask(this).execute();
+        navHeaderProfilePic.setOnClickListener(v -> {
+            startAccountActivity();
+        });
+        new GetUserProfilePicTask(this).execute();
     }
 
     private void createNotificationChannel() {
@@ -178,11 +201,22 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
-    static class GetProfilePicTask extends AsyncTask<Void, Void, byte[]> {
+    private void startAccountActivity(){
+        String sessionId = sharedPreferences.getString(getString(R.string.session_id), null);
+        if(sessionId != null){
+            Intent intent = new Intent(MainActivity.this, AccountActivity.class);
+            startActivityForResult(intent, LOGOUT_REQUEST_CODE);
+        }else {
+            Intent intent = new Intent(MainActivity.this, LoginActivity.class);
+            startActivityForResult(intent, LOGIN_REQUEST_CODE);
+        }
+    }
+
+    private static class GetUserProfilePicTask extends AsyncTask<Void, Void, byte[]> {
 
         private WeakReference<MainActivity> weakReference;
 
-        GetProfilePicTask(MainActivity activity){
+        GetUserProfilePicTask(MainActivity activity){
             weakReference = new WeakReference<>(activity);
         }
 
@@ -193,18 +227,20 @@ public class MainActivity extends AppCompatActivity
 
         @Override
         protected void onPostExecute(byte[] bytes) {
-            MainActivity activity = weakReference.get();
+            if (bytes != null){
+                MainActivity activity = weakReference.get();
 
-            RequestOptions requestOptions = new RequestOptions()
-                    .placeholder(R.mipmap.ic_launcher)
-                    .error(R.mipmap.ic_launcher);
+                RequestOptions requestOptions = new RequestOptions()
+                        .placeholder(R.mipmap.ic_launcher)
+                        .error(R.mipmap.ic_launcher);
 
-            Glide.with(activity)
-                    .setDefaultRequestOptions(requestOptions)
-                    .asBitmap()
-                    .apply(RequestOptions.circleCropTransform())
-                    .load(bytes)
-                    .into(activity.navHeaderProfilePic);
+                Glide.with(activity.getApplicationContext())
+                        .setDefaultRequestOptions(requestOptions)
+                        .asBitmap()
+                        .apply(RequestOptions.circleCropTransform())
+                        .load(bytes)
+                        .into(activity.navHeaderProfilePic);
+            }
         }
     }
 
@@ -215,7 +251,7 @@ public class MainActivity extends AppCompatActivity
         int id = item.getItemId();
 
         if (id == R.id.nav_account) {
-
+            startAccountActivity();
         } else if (id == R.id.nav_settings) {
             Intent intent = new Intent(MainActivity.this, SettingsActivity.class);
             startActivity(intent);

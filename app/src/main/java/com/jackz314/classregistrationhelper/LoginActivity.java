@@ -13,7 +13,9 @@ import android.view.View;
 import android.view.inputmethod.EditorInfo;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.TextView;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
 import static com.jackz314.classregistrationhelper.AccountUtils.authorize;
@@ -58,6 +60,13 @@ public class LoginActivity extends AppCompatActivity {
 
         mLoginFormView = findViewById(R.id.login_form_layout);
         mProgressView = findViewById(R.id.login_progress);
+
+        TextView loginDisclaimer = findViewById(R.id.login_disclaimer_text);
+        loginDisclaimer.setOnClickListener(v -> new AlertDialog.Builder(this)
+                .setTitle("Disclaimer")
+                .setMessage(R.string.disclaimer_text)
+                .setCancelable(true)
+                .show());
     }
 
     /**

@@ -40,4 +40,5 @@ dependencies {
     implementation 'org.jsoup:jsoup:1.11.3'//html parsing
     testImplementation 'junit:junit:4.12'
     androidTestImplementation 'androidx.test:runner:1.1.1-alpha01'
+    implementation 'com.android.support.constraint:constraint-layout:1.1.3'
 }

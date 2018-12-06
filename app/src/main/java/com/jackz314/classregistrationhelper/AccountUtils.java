@@ -390,8 +390,7 @@ public class AccountUtils {
                 //follow redirect until the last one which returns the proper session id
                 String sessionFor = null;
                 if(ticketSessionUrl.contains("?ticket=")){
-                    OkHttpClient reClient = getUnsafeOkHttpClient()
-                            .newBuilder()
+                    OkHttpClient reClient = new OkHttpClient.Builder()
                             .followRedirects(false)
                             .followSslRedirects(false)
                             .build();
@@ -542,7 +541,7 @@ public class AccountUtils {
     //long running, takes about rootcrt seconds, and about 3 MB of memory (probably)
     static byte[] getProfilePicByteArr(Context context){
         SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
-        String profilePicStr = sharedPreferences.getString(context.getString(R.string.profile_pic_url), null);
+        String profilePicStr = sharedPreferences.getString(context.getString(R.string.profile_pic_str), null);
         if(profilePicStr != null){
             return Base64.decode(profilePicStr, Base64.NO_WRAP);
         }
@@ -563,7 +562,7 @@ public class AccountUtils {
         //}
         //SSLContext sslContext = getPinnedCertSslSocketFactory(context);
 
-        OkHttpClient client = getUnsafeOkHttpClient();
+        OkHttpClient client = new OkHttpClient();
         Request request = new Request.Builder()
                 .url(context.getString(R.string.get_profile_url))
                 .header("Cookie", sessionForCookie)
@@ -600,7 +599,9 @@ public class AccountUtils {
                 picUrlStartPos += 33;
                 int picUrlEndPos = htmlResponse.indexOf('\"', picUrlStartPos);
                 if(picUrlEndPos == -1) return null;
-                return Base64.decode(htmlResponse.substring(picUrlStartPos, picUrlEndPos), Base64.NO_WRAP);
+                profilePicStr = htmlResponse.substring(picUrlStartPos, picUrlEndPos);
+                sharedPreferences.edit().putString(context.getString(R.string.profile_pic_str), profilePicStr).apply();
+                return Base64.decode(profilePicStr, Base64.NO_WRAP);
             }else return null;
         } catch (IOException e) {
             e.printStackTrace();
@@ -608,6 +609,33 @@ public class AccountUtils {
         }
     }
 
+    static void clearUserInfoFromSharedPreference(Context context){
+        SharedPreferences.Editor sfEditor = PreferenceManager.getDefaultSharedPreferences(context).edit();
+        sfEditor.putString(context.getString(R.string.username), null)
+                .putString(context.getString(R.string.password), null)
+                .putString(context.getString(R.string.user_name), null)
+                .putString(context.getString(R.string.user_student_id), null)
+
+                .putStringSet(context.getString(R.string.my_registered_crn_set), null)
+                .putString(context.getString(R.string.my_course_registered_status_list), null)
+
+                .putString(context.getString(R.string.session_id), null)
+                .putString(context.getString(R.string.castgc_cookie), null)
+                .putString(context.getString(R.string.perm_get_session_url), null)
+
+                .putString(context.getString(R.string.perm_get_profile_session_url), null)
+                .putString(context.getString(R.string.profile_castgc_cookie), null)
+                .putString(context.getString(R.string.profile_session_for_id), null)
+                .putString(context.getString(R.string.profile_pic_str), null)
+
+                .putBoolean(context.getString(R.string.started_course_worker), false)
+                .putBoolean(context.getString(R.string.notified_all_errors), false)
+
+                .apply();
+    }
+
+    //the certificate chain has been completed on the server side, so there's no point of doing this all
+    @Deprecated
     private static OkHttpClient getUnsafeOkHttpClient() {
         try {
             // Create a trust manager that does not validate certificate chains
@@ -649,8 +677,9 @@ public class AccountUtils {
             throw new RuntimeException(e);
         }
     }
-//IGNORING ALL THE SSL STUFF
+
     //I'm done with all these certificate stuff. It's a server problem after all, so when they fix it, I won't need all these
+    //the certificate chain has been completed on the server side, so there's no point of doing this all
 //    private static SSLContext getPinnedCertSslSocketFactory(Context context) {
 //        try {
 //            KeyStore keyStore = KeyStore.getInstance("BKS");

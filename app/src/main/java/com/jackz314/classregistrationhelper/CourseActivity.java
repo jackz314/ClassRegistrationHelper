@@ -38,6 +38,7 @@ import java.util.Set;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.coordinatorlayout.widget.CoordinatorLayout;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -66,6 +67,7 @@ public class CourseActivity extends AppCompatActivity {
     private CourseListStatus courseListStatus = CourseListStatus.NOT_ON_LIST;
     private TextView registerStatusText;
     private FloatingActionButton courseFab;
+    private ConstraintLayout contentLayout;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -78,6 +80,9 @@ public class CourseActivity extends AppCompatActivity {
         urlForCourse = getIntent().getBundleExtra("bundle").getString("URL");
         if(urlForCourse == null) return;
         courseCrn = urlForCourse.substring(urlForCourse.indexOf("crn=") + 4);
+
+        contentLayout = findViewById(R.id.course_detail_content_layout);
+        contentLayout.setVisibility(View.GONE);
 
         //tempText.setOnClickListener(view -> startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(urlForCourse))));
         toolbarLayout.setTitle("Loading...");
@@ -249,7 +254,7 @@ public class CourseActivity extends AppCompatActivity {
             if(photoUrl != null && !photoUrl.isEmpty() && !photoUrl.contains("sealofucmerced")){//has actual profile picture
                 CourseActivity activity = activityReference.get();
                 if(activity != null){
-                    ImageView profilePictureView = activity.toolbarLayout.findViewById(R.id.profile_picture);
+                    ImageView profilePictureView = activity.toolbarLayout.findViewById(R.id.prof_profile_picture);
                     try{
                         Glide.with(activity)
                                 .load(photoUrl)
@@ -454,6 +459,8 @@ public class CourseActivity extends AppCompatActivity {
             otherInfoLabel.setVisibility(View.GONE);
         }
 
+        contentLayout.setVisibility(View.VISIBLE);
+
         //toolbarLayout.setCollapsedTitleTextAppearance(R.style.CollapsedAppBar);
         //toolbarLayout.setExpandedTitleTextAppearance(R.style.ExpandedAppBar);
     }
@@ -465,23 +472,28 @@ public class CourseActivity extends AppCompatActivity {
         String addToListStr = urlForCourse.substring(startPos);
 
         SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-        String myList = sharedPreferences.getString(getString(R.string.my_course_selection_urls), null);
-        if(myList == null){
-            //first time
-            myList = addToListStr;
-        }else {
-            myList = myList + "-" + addToListStr;
-        }
-        sharedPreferences.edit().putString(getString(R.string.my_course_selection_urls), myList).commit();
 
+        boolean addedBefore = false;
         Set<String> crnSet = sharedPreferences.getStringSet(getString(R.string.my_selection_crn_set), null);
         if(crnSet == null) crnSet = Collections.singleton(courseCrn);//first one
-        else crnSet.add(courseCrn);//add to set
+        else addedBefore = !crnSet.add(courseCrn);//add to set
         Log.i(TAG, courseCrn + " added to crnSet");
         /*for (String aCrnSet : crnSet) {
             Log.i(TAG, aCrnSet + ",");
         }*/
         sharedPreferences.edit().putStringSet(getString(R.string.my_selection_crn_set), crnSet).commit();
+
+        if(!addedBefore){
+            String myList = sharedPreferences.getString(getString(R.string.my_course_selection_urls), null);
+            if(myList == null){
+                //first time
+                myList = addToListStr;
+            }else {
+                myList = myList + "-" + addToListStr;
+            }
+            sharedPreferences.edit().putString(getString(R.string.my_course_selection_urls), myList).commit();
+        }
+
         if(listNeedToUpdateCatalog){
             Intent intent = new Intent();
             intent.putExtra(COURSE_LIST_CHANGE_CRN_KEY, courseCrn);

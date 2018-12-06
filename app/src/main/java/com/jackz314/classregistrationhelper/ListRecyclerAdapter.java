@@ -165,7 +165,7 @@ class ListRecyclerAdapter extends RecyclerView.Adapter<ListRecyclerAdapter.ListR
        List<Course> results = new LinkedList<>();
        for (Course classInfo : originalList) {
            //matching...
-           if (classInfo.getNumber().toLowerCase().contains(query.toLowerCase()) || //course number
+           if (classInfo.getNumber().toLowerCase().replace('-', ' ').contains(query.toLowerCase().replace('-', ' ')) || //course number
                    classInfo.getCrn().contains(query) || //crn
                    classInfo.getTitle().toLowerCase().contains(query.toLowerCase())) { //description
                results.add(classInfo);

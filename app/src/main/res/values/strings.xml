@@ -32,8 +32,7 @@
     <!-- Profile Pic URLs -->
     <string name="get_profile_url">https://icatcard.ucmerced.edu/mobileid/profile.php</string>
 
-    <string name="disclaimer_text">Your account information will only be used for accessing your course list and registering classes. It will not be shared with any third party.\n
-        All communication are established solely with UCM servers and are conducted with standard HTTPS protocols, but that does not mean all risky factors are eliminated. Use at your own risk</string>
+    <string name="disclaimer_text">Your account information will only be used for accessing your basic information, course list and registering classes. It will not be shared with any third party.\nAll communication are established solely with UCM servers and are conducted with standard HTTPS/SSL protocols, but this doesn\'t mean all risk factors are eliminated. Use at your own risk!</string>
 
     <string name="title_activity_settings">Settings</string>
 
@@ -49,13 +48,13 @@
     <string name="perm_get_profile_session_url">perm_get_profile_session_url</string>
     <string name="profile_castgc_cookie">profile_castgc_cookie</string>
     <string name="profile_session_for_id">profile_session_for_id</string>
-    <string name="profile_pic_url">profile_pic_url</string>
+    <string name="profile_pic_str">profile_pic_base64</string>
 
     <!-- Course list storage stuff -->
-    <string name="my_course_selection_urls">my_course_selection_list</string>
+    <string name="my_course_selection_urls">my_course_selection_urls</string>
     <string name="my_selection_crn_set">my_selection_crn_set</string>
     <string name="my_registered_crn_set">my_registered_crn_set</string>
-    <string name="my_course_registered_status_list">my_course_registered_time_list</string>
+    <string name="my_course_registered_status_list">my_course_registered_status_list</string>
 
     <!-- General settings -->
     <string name="pref_header_general">General</string>
@@ -77,12 +76,12 @@
     <string name="pref_key_sys_notif_setting">pref_key_sys_notif_setting</string>
     <string name="pref_title_sys_notif_setting">System notification settings</string>
 
-    <string name="pref_key_notif">pref_key_notif_main</string>
+    <string name="pref_key_notif">pref_key_notif</string>
     <string name="pref_title_notif">Show notifications</string>
     <string name="pref_content_notif">Notify me when classes on my list are available.</string>
 
     <string name="pref_title_major">Choose Majors</string>
-    <string name="pref_key_major">pref_key_valid_major</string>
+    <string name="pref_key_major">pref_key_major</string>
 
     <string name="changed_settings">changed_settings</string>
 

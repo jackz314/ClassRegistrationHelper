@@ -10,6 +10,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.preference.PreferenceManager;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -122,6 +123,8 @@ public class MyCoursesFragment extends Fragment {
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_my_courses, container, false);
+
+        setHasOptionsMenu(true);
 
         myCoursesRecyclerView = view.findViewById(R.id.my_courses_recycler_view);
         signInButton = view.findViewById(R.id.sign_in_btn);
@@ -270,7 +273,9 @@ public class MyCoursesFragment extends Fragment {
             }else{
                 ArrayList<List<String>> courseList = getAllSelectionCourseList(fragment.getContext());
                 if(courseList != null){
-                    dialogBuilder.setMessage(getRegisterResultTexts(courseList.get(0), courseList.get(1), errors)[1]);
+                    String[] resultTexts = getRegisterResultTexts(courseList.get(0), courseList.get(1), errors);
+                    dialogBuilder.setTitle(resultTexts[0]);
+                    dialogBuilder.setMessage(resultTexts[2]);
                 }else {
                     dialogBuilder.setMessage(fragment.getString(R.string.toast_register_unknown_error));
                 }
@@ -312,22 +317,34 @@ public class MyCoursesFragment extends Fragment {
         @Override
         protected List<Course> doInBackground(Void... voids) {
             MyCoursesFragment fragment = contextWeakReference.get();
-            if(fragment == null) return null;
-            if(fragment.sessionId == null) return null;
+            if(fragment == null) {
+                Log.e(TAG, "MY COURSE FRAGMENT NULL");
+                return null;
+            }
+            if(fragment.sessionId == null) {
+                Log.e(TAG, "MY COURSE SESSION ID NULL");
+                return null;
+            }
             Context context = fragment.getContext();
-            if (context == null) return null;
+            if (context == null) {
+                Log.e(TAG, "MY COURSE CONTEXT NULL");
+                return null;
+            }
 
             //get my course list
             String coursesHtml = getMyCoursesHtml(context);
             if(coursesHtml == null){
+                Log.e(TAG, "MY COURSEs HTML NULL");
                 Objects.requireNonNull(fragment.getActivity()).runOnUiThread(() -> Toast.makeText(context, fragment.getString(R.string.toast_internet_error), Toast.LENGTH_SHORT).show());
                 return null;
             }else if(coursesHtml.equals("UNEXPECTED")) {
+                Log.e(TAG, "COURSE HTML UNEXPECTED");
                 Objects.requireNonNull(fragment.getActivity()).runOnUiThread(() -> Toast.makeText(context, fragment.getString(R.string.toast_unknown_error), Toast.LENGTH_SHORT).show());
                 return null;
             }
             List<Course> myCourses = processAndStoreMyCourses(coursesHtml, context);
             if(myCourses == null){
+                Log.e(TAG, "MY COURSEs NULL");
                 Objects.requireNonNull(fragment.getActivity()).runOnUiThread(() -> Toast.makeText(context, fragment.getString(R.string.toast_internet_error), Toast.LENGTH_SHORT).show());
                 return null;
             }
@@ -350,6 +367,7 @@ public class MyCoursesFragment extends Fragment {
                     if(fragment.swipeRefreshLayout != null){
                         fragment.swipeRefreshLayout.setRefreshing(false);
                     }
+                    Log.e(TAG, "MY COURSES NULL");
                     Toast.makeText(fragment.getContext(), fragment.getString(R.string.toast_unknown_error), Toast.LENGTH_SHORT).show();
                 }else {
                     fragment.processMyCoursesData(courses);
@@ -382,6 +400,7 @@ public class MyCoursesFragment extends Fragment {
             if(swipeRefreshLayout != null){
                 swipeRefreshLayout.setRefreshing(false);
             }
+            onRegisterStatusChanged();//change catalog status for first startup
         }
     }
 
@@ -396,7 +415,22 @@ public class MyCoursesFragment extends Fragment {
         }
     }
 
-    void onLoginSuccess() {
+    void processLoginResult(){
+        sessionId = sharedPreferences.getString(getString(R.string.session_id), null);
+        if(sessionId == null) signInPromptText.setText("Sign in failed, please try again");
+        else {
+            onLoginSuccess();
+        }
+    }
+
+    private void onLoginSuccess() {
+        signInButton.setVisibility(View.GONE);
+        signInPromptText.setVisibility(View.GONE);
+        loadProgress.setVisibility(View.VISIBLE);
+        swipeRefreshLayout.setEnabled(true);
+        myCoursesRecyclerView.setVisibility(View.VISIBLE);
+        new GetMyCoursesTask(this).execute();
+
         loggedIn = true;
         if (mListener != null) {
             mListener.myCourseOnLoginSuccess();
@@ -449,7 +483,6 @@ public class MyCoursesFragment extends Fragment {
         LinearLayout searchBar = searchView.findViewById(R.id.search_bar);
         searchBar.setLayoutTransition(new LayoutTransition());
         searchView.setQueryHint("Search in my courses...");
-        searchView.setClickable(false);
         searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
             @Override
             public boolean onQueryTextSubmit(String query) {
@@ -469,11 +502,13 @@ public class MyCoursesFragment extends Fragment {
         searchMenuIem.setOnActionExpandListener(new MenuItem.OnActionExpandListener() {
             @Override
             public boolean onMenuItemActionExpand(MenuItem menuItem) {
+                menu.findItem(R.id.action_try_register_all).setVisible(false);
                 return true;
             }
 
             @Override
             public boolean onMenuItemActionCollapse(MenuItem menuItem) {
+                menu.findItem(R.id.action_try_register_all).setVisible(true);
                 return true;
             }
         });
@@ -496,22 +531,13 @@ public class MyCoursesFragment extends Fragment {
         if(requestCode == LOGIN_REQUEST_CODE){
             if(resultCode == LOGIN_SUCCESS_CODE){
                 //login success, get the list
-                sessionId = sharedPreferences.getString(getString(R.string.session_id), null);
-                if(sessionId == null) signInPromptText.setText("Sign in failed, please try again");
-                else {
-                    signInButton.setVisibility(View.GONE);
-                    signInPromptText.setVisibility(View.GONE);
-                    loadProgress.setVisibility(View.VISIBLE);
-                    swipeRefreshLayout.setEnabled(true);
-                    myCoursesRecyclerView.setVisibility(View.VISIBLE);
-                    new GetMyCoursesTask(this).execute();
-                    onLoginSuccess();
-                }
+                processLoginResult();
             }
             else {//RESULT_CANCELLED
                 signInPromptText.setText("Sign in aborted, please sign in to view your courses");
             }
-        }else if(requestCode == COURSE_DETAIL_REQUEST_CODE && resultCode == COURSE_CHANGE_TO_LIST_CODE && data != null){
+        }
+        if(requestCode == COURSE_DETAIL_REQUEST_CODE && resultCode == COURSE_CHANGE_TO_LIST_CODE && data != null){
             String crn = data.getStringExtra(COURSE_LIST_CHANGE_CRN_KEY);
             if(crn != null){
                 if(data.getBooleanExtra(COURSE_REGISTER_STATUS_CHANGED, false)){

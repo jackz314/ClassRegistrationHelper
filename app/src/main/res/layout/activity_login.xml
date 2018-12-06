@@ -23,7 +23,7 @@
     <ScrollView
         android:id="@+id/login_form"
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="wrap_content">
 
         <LinearLayout
             android:id="@+id/login_form_layout"
@@ -74,4 +74,12 @@
 
         </LinearLayout>
     </ScrollView>
+
+    <TextView
+        android:id="@+id/login_disclaimer_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Disclaimer"
+        android:textAlignment="center"
+        android:textAllCaps="false" />
 </LinearLayout>

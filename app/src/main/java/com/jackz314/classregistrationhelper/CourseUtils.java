@@ -211,6 +211,7 @@ public class CourseUtils {
         subjCodeStartPos += 9;
         int crsENumbStartPos = url.indexOf("crsenumb=");
         if(crsENumbStartPos == -1) return "";
+        crsENumbStartPos += 9;
         int subjCodeEndPos = url.indexOf('&', subjCodeStartPos);
         if(subjCodeEndPos == -1) return "";
         int crsENumbEndPos = url.indexOf('&', crsENumbStartPos);
@@ -1430,7 +1431,7 @@ public class CourseUtils {
             String htmlResponse;
             if (response.body() != null) {
                 htmlResponse = response.body().string();
-                Log.i(TAG, htmlResponse);
+                //Log.i(TAG, htmlResponse);
                 return htmlResponse;
             }else {
                 return null;

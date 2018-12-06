@@ -9,8 +9,10 @@
     tools:showIn="@layout/activity_course">
 
     <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/course_detail_content_layout"
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="match_parent"
+        android:visibility="visible">
 
         <TextView
             android:id="@+id/course_title"
@@ -35,9 +37,9 @@
             android:id="@+id/course_register_status"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:visibility="gone"
             android:layout_marginStart="8dp"
             android:text="Registered on Nov 11, 2018"
+            android:visibility="gone"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/course_title" />
 
@@ -286,8 +288,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             app:barrierDirection="bottom"
-            app:constraint_referenced_ids="course_restriction_label,course_additional_info,course_prerequisites,course_academic_restriction,guideline"
-            />
+            app:constraint_referenced_ids="course_restriction_label,course_additional_info,course_prerequisites,course_academic_restriction,guideline" />
 
         <TextView
             android:id="@+id/course_description_label"
@@ -350,8 +351,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             app:barrierDirection="bottom"
-            app:constraint_referenced_ids="course_register_status,course_title"
-            />
+            app:constraint_referenced_ids="course_register_status,course_title" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 </androidx.core.widget.NestedScrollView>
