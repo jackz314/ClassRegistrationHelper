@@ -269,6 +269,7 @@ public class SettingsActivity extends AppCompatPreferenceActivity {
             Preference cancelSchedulePreference = findPreference(getString(R.string.pref_key_cancel_schedule));
             cancelSchedulePreference.setOnPreferenceClickListener(preference -> {
                 cancelScheduledRegistration(getContext());
+                Toast.makeText(getContext(), "Scheduled registration cancelled!", Toast.LENGTH_SHORT).show();
                 return false;
             });
 
@@ -347,11 +348,11 @@ public class SettingsActivity extends AppCompatPreferenceActivity {
             int minute = currentTime.get(Calendar.MINUTE);
             new TimePickerDialog(getContext(), (view, hourOfDay, minute1) -> {
                 Calendar scheduleCalendar = Calendar.getInstance();
-                scheduleCalendar.set(year, month, day, hourOfDay, minute1);
+                scheduleCalendar.set(year, month, day, hourOfDay, minute1, 0);
 
                 SimpleDateFormat sdf = (SimpleDateFormat) SimpleDateFormat.getDateTimeInstance();
                 String dateString = sdf.format(scheduleCalendar.getTime());
-                Toast.makeText(getContext(), String.format(Locale.getDefault(), "Scheduled registration set for : %s", dateString), Toast.LENGTH_SHORT).show();
+                Toast.makeText(getContext(), String.format(Locale.getDefault(), "Scheduled registration set for: %s", dateString), Toast.LENGTH_SHORT).show();
 
                 long scheduleTime = scheduleCalendar.getTimeInMillis();
                 scheduleRegistration(getContext(), scheduleTime);

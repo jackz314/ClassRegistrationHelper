@@ -1,6 +1,5 @@
 
-Csquid:S1068"'Remove this unused "TAG" private field.(Ö—ÈÚ8â˜ˆø,
-Msquid:S1602",Remove useless curly braces around statement(òÔû€üÿÿÿÿ8â˜ˆø,
-Ksquid:S00108")Either remove or fill this block of code.(»ƒ ™şÿÿÿÿ8â˜ˆø,
-Ksquid:S00108")Either remove or fill this block of code.(Õó³÷úÿÿÿÿ8â˜ˆø,
-Dsquid:S1185"(Remove this method to simply inherit it.(Ù«µ§8â˜ˆø,
+Msquid:S1602",Remove useless curly braces around statement(òÔû€üÿÿÿÿ8ËÏÓÁø,
+Ksquid:S00108")Either remove or fill this block of code.(»ƒ ™şÿÿÿÿ8ËÏÓÁø,
+Ksquid:S00108")Either remove or fill this block of code.(Õó³÷úÿÿÿÿ8ËÏÓÁø,
+Dsquid:S1185"(Remove this method to simply inherit it.(Ù«µ§8ËÏÓÁø,

@@ -95,3 +95,11 @@ Z
 +app/src/main/res/layout/content_account.xml,9\d\9d831dfdc5454711b574f736750c07462c949476
 {
 Kapp/src/main/java/com/jackz314/classregistrationhelper/AccountActivity.java,3\5\350cbba726689ba5db4ea972d9759fee5476ff25
+d
+4app/src/main/res/drawable/ic_register_black_24dp.xml,4\0\4096566b988e1e8f44e48da39062661d47620f9f
+L
+app/src/main/res/raw/cap.svg,b\b\bbca59f7bed9887f39c71c62220cd111bd6cd896
+R
+"app/src/main/res/xml/shortcuts.xml,8\7\87cb4420e1c717d282a4e828975516d007d45759
+„
+Tapp/src/main/java/com/jackz314/classregistrationhelper/ScheduleRegisterReceiver.java,6\5\6505a20fd8a5de94ecb1eb3a29a3d390ec1cf9cb
