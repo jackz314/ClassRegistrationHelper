@@ -64,6 +64,7 @@ public class CourseActivity extends AppCompatActivity {
     private static String urlForCourse;
     private Course mCourse = null;
     private String courseCrn;
+    private boolean fromExternal = false;
     private static final String TAG = "CourseActivity";
 
     private enum CourseListStatus{
@@ -112,7 +113,10 @@ public class CourseActivity extends AppCompatActivity {
         Uri appLinkData = intent.getData();
         if (Intent.ACTION_VIEW.equals(appLinkAction) && appLinkData != null){
             String url = appLinkData.toString();
-            if(!url.isEmpty()) return url;
+            if(!url.isEmpty()) {
+                fromExternal = true;
+                return url;
+            }
         }
         //otherwise fill course from intent
         mCourse = intent.getBundleExtra("bundle").getParcelable("CourseInfo");
@@ -525,9 +529,7 @@ public class CourseActivity extends AppCompatActivity {
         }
 
         if(listNeedToUpdateCatalog){
-            Intent intent = new Intent();
-            intent.putExtra(COURSE_LIST_CHANGE_CRN_KEY, courseCrn);
-            setResult(COURSE_CHANGE_TO_LIST_CODE, intent);
+            setPositiveResult(false);
 
             sharedPreferences.edit().putBoolean(getString(R.string.notified_all_errors), false).apply();
         }
@@ -555,9 +557,7 @@ public class CourseActivity extends AppCompatActivity {
         else crnSet.remove(courseCrn);//remove from set
         sharedPreferences.edit().putStringSet(getString(R.string.my_selection_crn_set), crnSet).apply();
         if(listNeedToUpdateCatalog){
-            Intent intent = new Intent();
-            intent.putExtra(COURSE_LIST_CHANGE_CRN_KEY, courseCrn);
-            setResult(COURSE_CHANGE_TO_LIST_CODE, intent);
+            setPositiveResult(false);
 
             sharedPreferences.edit().putBoolean(getString(R.string.notified_all_errors), false).apply();
         }else {
@@ -571,9 +571,7 @@ public class CourseActivity extends AppCompatActivity {
         removeFromMyList(courseCrn, getApplicationContext());
 
         if(listNeedToUpdateCatalog){
-            Intent intent = new Intent();
-            intent.putExtra(COURSE_LIST_CHANGE_CRN_KEY, courseCrn);
-            setResult(COURSE_CHANGE_TO_LIST_CODE, intent);
+            setPositiveResult(false);
 
             SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
             sharedPreferences.edit().putBoolean(getString(R.string.notified_all_errors), false).apply();
@@ -591,10 +589,7 @@ public class CourseActivity extends AppCompatActivity {
         courseListStatus = CourseListStatus.REGISTERED;
 
         if(registerNeedToUpdateCatalog){
-            Intent intent = new Intent();
-            intent.putExtra(COURSE_LIST_CHANGE_CRN_KEY, courseCrn);
-            intent.putExtra(COURSE_REGISTER_STATUS_CHANGED, true);
-            setResult(COURSE_CHANGE_TO_LIST_CODE, intent);
+            setPositiveResult(true);
 
             SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
             sharedPreferences.edit().putBoolean(getString(R.string.notified_all_errors), false).apply();
@@ -609,10 +604,7 @@ public class CourseActivity extends AppCompatActivity {
         courseListStatus = CourseListStatus.NOT_ON_LIST;
 
         if(registerNeedToUpdateCatalog){
-            Intent intent = new Intent();
-            intent.putExtra(COURSE_LIST_CHANGE_CRN_KEY, courseCrn);
-            intent.putExtra(COURSE_REGISTER_STATUS_CHANGED, true);
-            setResult(COURSE_CHANGE_TO_LIST_CODE, intent);
+            setPositiveResult(true);
 
             SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
             sharedPreferences.edit().putBoolean(getString(R.string.notified_all_errors), false).apply();
@@ -626,6 +618,23 @@ public class CourseActivity extends AppCompatActivity {
 
     void dropCourse(){
         new DropCourseTask(this).execute();
+    }
+
+    void setPositiveResult(boolean registerStatusChanged){
+        Intent intent = new Intent();
+        intent.putExtra(COURSE_LIST_CHANGE_CRN_KEY, courseCrn);
+        if(registerStatusChanged){
+            intent.putExtra(COURSE_REGISTER_STATUS_CHANGED, true);
+        }
+        setResult(COURSE_CHANGE_TO_LIST_CODE, intent);
+
+        if(fromExternal){
+            SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+            sharedPreferences.edit().putBoolean(getString(R.string.external_changed_list), true).apply();
+            if(registerStatusChanged){
+                sharedPreferences.edit().putBoolean(getString(R.string.external_changed_register_status), true).apply();
+            }
+        }
     }
 
     //set CollapsingToolbarLayout height

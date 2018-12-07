@@ -182,6 +182,10 @@
 
     <string name="notified_all_errors">notified_all_errors</string>
 
+    <string name="external_changed_list">external_changed_list</string>
+    <string name="external_changed_register_status">external_changed_register_status</string>
+
+
     <string name="channel_name">Course watcher status updates</string>
     <string name="channel_description">Notifications for status updates for courses on your list</string>
 

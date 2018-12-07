@@ -466,6 +466,21 @@ public class MyCoursesFragment extends Fragment {
     }
 
     @Override
+    public void onResume() {
+        if(sharedPreferences.getBoolean(getString(R.string.external_changed_list), false)){
+            if(sharedPreferences.getBoolean(getString(R.string.external_changed_register_status), false)){
+                refreshMyCoursesEntirely();
+                sharedPreferences.edit().putBoolean(getString(R.string.external_changed_register_status), false).apply();
+            }else{
+                refreshMyCoursesLocally();
+                sharedPreferences.edit().putBoolean(getString(R.string.external_changed_list), false).apply();
+            }
+        }
+
+        super.onResume();
+    }
+
+    @Override
     public void onAttach(Context context) {
         super.onAttach(context);
         if (context instanceof MyCoursesOnFragmentInteractionListener) {
