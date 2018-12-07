@@ -41,7 +41,7 @@ import static com.jackz314.classregistrationhelper.Constants.COURSE_CHANGE_TO_LI
 import static com.jackz314.classregistrationhelper.Constants.COURSE_DETAIL_REQUEST_CODE;
 import static com.jackz314.classregistrationhelper.Constants.COURSE_LIST_CHANGE_CRN_KEY;
 import static com.jackz314.classregistrationhelper.Constants.COURSE_REGISTER_STATUS_CHANGED;
-import static com.jackz314.classregistrationhelper.CourseUtils.changeRegisterStatusForCourse;
+import static com.jackz314.classregistrationhelper.CourseUtils.fillCourseRegistrationStatus;
 import static com.jackz314.classregistrationhelper.CourseUtils.getCatalogFromHtml;
 import static com.jackz314.classregistrationhelper.CourseUtils.getCatalogHtml;
 import static com.jackz314.classregistrationhelper.CourseUtils.getPreferredTerm;
@@ -240,7 +240,7 @@ public class CatalogFragment extends Fragment {
                         Course course = courses.get(i);
                         if(course.getCrn().equals(specificCourseCrnExtra[0])){
                             Log.i(TAG, "Course List refreshed with changes in course crn: " + specificCourseCrnExtra[0]);
-                            courses.set(i, changeRegisterStatusForCourse(course, getContext()));
+                            courses.set(i, fillCourseRegistrationStatus(course, getContext()));
                             break;
                         }
                     }
@@ -250,7 +250,7 @@ public class CatalogFragment extends Fragment {
                     Set<String> registeredCrnSet = PreferenceManager.getDefaultSharedPreferences(getContext()).getStringSet(getString(R.string.my_registered_crn_set), null);
                     for (int i = 0; i < courses.size(); i++) {
                         Course course = courses.get(i);
-                        courses.set(i, changeRegisterStatusForCourse(course, getContext(), selectionCrnSet, registeredCrnSet));
+                        courses.set(i, fillCourseRegistrationStatus(course, getContext(), selectionCrnSet, registeredCrnSet));
                     }
                 }
             }
@@ -270,6 +270,9 @@ public class CatalogFragment extends Fragment {
     public void processCatalogData(List<Course> list){
         if(courseCatalogAdapter != null){
             courseCatalogAdapter.swapNewDataSet(list);
+            if(mQuery != null && !mQuery.isEmpty()){
+                query(mQuery);
+            }
         }
         onLoadFinished();
         if(loadProgress != null){
@@ -297,7 +300,7 @@ public class CatalogFragment extends Fragment {
             }
         }
         //System.out.println("calledquery" + " " + text);
-    }*///using view is depreciated
+    }*///using view manually is depreciated
 
     public void query(String query){
         mQuery = query;

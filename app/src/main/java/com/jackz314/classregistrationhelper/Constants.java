@@ -21,4 +21,10 @@ public final class Constants {
     static final String WORKER_SHORTER_INTERVAL_DATA = "worker_shorter_interval_data";
     static final String WORKER_IS_SUMMARY_JOB = "worker_is_summary_job";
     static final String COURSE_STUFF_WORKER_NAME = "course_stuff_worker_name";
+
+    //App shortcuts constants
+    static final String SHORTCUT_INTENT_EXTRA_KEY = "REGISTER_ALL_COURSES";
+    static final String SHORTCUT_INTENT_EXTRA_VALUE = "YES_PLEASE";
+    static final String GOOGLECHROME_NAVIGATE_PREFIX = "googlechrome://navigate?url=";
+
 }

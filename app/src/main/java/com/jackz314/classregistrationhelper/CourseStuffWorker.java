@@ -2,6 +2,8 @@ package com.jackz314.classregistrationhelper;
 
 import android.app.Notification;
 import android.content.Context;
+import android.content.SharedPreferences;
+import android.preference.PreferenceManager;
 
 import androidx.annotation.NonNull;
 import androidx.core.app.NotificationManagerCompat;
@@ -21,7 +23,6 @@ public class CourseStuffWorker extends Worker {
         super(context, workerParams);
     }
 
-    //todo daily update of registration status
     @NonNull
     @Override
     public Result doWork() {
@@ -33,6 +34,7 @@ public class CourseStuffWorker extends Worker {
             if(shorterInterval != -1){
                 addShorterIntervalRequests(shorterInterval);
             }
+            SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
             Notification resultNotification;
             try{
                 resultNotification = checkAndRegisterCourses(getApplicationContext());
@@ -40,6 +42,7 @@ public class CourseStuffWorker extends Worker {
                 resultNotification = getUnknownErrorNotification(getApplicationContext());
                 NotificationManagerCompat notificationManager = NotificationManagerCompat.from(getApplicationContext());
                 notificationManager.notify(createUUIDFromTimestamp(), resultNotification);
+
                 e.printStackTrace();
                 return Result.FAILURE;
             }

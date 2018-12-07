@@ -52,6 +52,12 @@ public class SettingsActivity extends AppCompatPreferenceActivity {
     private static Preference.OnPreferenceChangeListener sBindPreferenceSummaryToValueListener = (preference, value) -> {
         String stringValue = value.toString();
 
+        setBindPreferenceSummary(preference, stringValue);
+
+        return true;
+    };
+
+    private static void setBindPreferenceSummary(Preference preference, String stringValue){
         if (preference instanceof ListPreference) {
             // For list preferences, look up the correct display value in
             // the preference's 'entries' list.
@@ -91,9 +97,7 @@ public class SettingsActivity extends AppCompatPreferenceActivity {
             // simple string representation.
             preference.setSummary(stringValue);
         }
-        Context context = preference.getContext();
-        return true;
-    };
+    }
 
     /**
      * Helper method to determine if the device has an extra-large screen. For
@@ -191,6 +195,9 @@ public class SettingsActivity extends AppCompatPreferenceActivity {
             // guidelines.
             SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getContext());
             bindPreferenceSummaryToValue(findPreference(getString(R.string.pref_key_term)));
+            bindPreferenceSummaryToValue(findPreference(getString(R.string.pref_key_query_interval)));
+            bindPreferenceSummaryToValue(findPreference(getString(R.string.pref_key_report_interval)));
+
             ListPreference termListPreference = (ListPreference) findPreference(getString(R.string.pref_key_term));
             termListPreference.setEntryValues(sharedPreferences.getString(getString(R.string.pref_key_valid_term_values), "").split(";"));
             termListPreference.setEntries(sharedPreferences.getString(getString(R.string.pref_key_valid_term_names), "").split(";"));
@@ -242,21 +249,72 @@ public class SettingsActivity extends AppCompatPreferenceActivity {
                 return true;
             });
 
-            SwitchPreference autoRegisterPreference = (SwitchPreference)findPreference(getString(R.string.pref_key_auto_reg));
-
             SwitchPreference autoCheckPreference = (SwitchPreference)findPreference(getString(R.string.pref_key_auto_check));
+
+            //disable preferences when there's no login info
+            String sessionId = sharedPreferences.getString(getString(R.string.session_id), null);
+            if(sessionId == null){
+                autoCheckPreference.setEnabled(false);
+                disableCourseCheckStuff();
+            }else {
+                boolean autoCheck = sharedPreferences.getBoolean(getString(R.string.pref_key_auto_check), true);
+                if(!autoCheck){
+                    disableCourseCheckStuff();
+                }else {
+                    enableCourseCheckStuff();
+                }
+            }
+
             autoCheckPreference.setOnPreferenceChangeListener((preference, newValue) -> {
                 if((Boolean)newValue){
-                    autoRegisterPreference.setEnabled(true);
-                    autoRegisterPreference.setChecked(sharedPreferences.getBoolean(getString(R.string.pref_key_auto_reg), true));
-                    addToWorkerQueue(getContext());
+                    enableCourseCheckStuff();
                 }else {
-                    autoRegisterPreference.setEnabled(false);
-                    autoRegisterPreference.setChecked(false);
-                    WorkManager.getInstance().cancelAllWork();
+                    disableCourseCheckStuff();
                 }
                 return true;
             });
+
+            ListPreference queryIntervalPreference = (ListPreference) findPreference(getString(R.string.pref_key_query_interval));
+            queryIntervalPreference.setOnPreferenceChangeListener((preference, newValue) -> {
+                //restart all worker stuff
+                WorkManager.getInstance().cancelAllWork();
+                addToWorkerQueue(getContext());
+                //update summary
+                setBindPreferenceSummary(queryIntervalPreference, (String) newValue);
+                return true;
+            });
+
+            ListPreference reportIntervalPreference = (ListPreference) findPreference(getString(R.string.pref_key_report_interval));
+            reportIntervalPreference.setOnPreferenceChangeListener((preference, newValue) -> {
+                //restart all worker stuff
+                WorkManager.getInstance().cancelAllWork();
+                addToWorkerQueue(getContext());
+                //update summary
+                setBindPreferenceSummary(reportIntervalPreference, (String) newValue);
+                return true;
+            });
+
+        }
+
+        private void disableCourseCheckStuff(){
+            SwitchPreference autoRegisterPreference = (SwitchPreference)findPreference(getString(R.string.pref_key_auto_reg));
+            ListPreference queryInterval = (ListPreference) findPreference(getString(R.string.pref_key_query_interval));
+            ListPreference reportInterval = (ListPreference) findPreference(getString(R.string.pref_key_report_interval));
+            autoRegisterPreference.setEnabled(false);
+            queryInterval.setEnabled(false);
+            reportInterval.setEnabled(false);
+            WorkManager.getInstance().cancelAllWork();
+        }
+
+        private void enableCourseCheckStuff(){
+            SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getContext());
+            SwitchPreference autoRegisterPreference = (SwitchPreference)findPreference(getString(R.string.pref_key_auto_reg));
+            ListPreference queryInterval = (ListPreference) findPreference(getString(R.string.pref_key_query_interval));
+            ListPreference reportInterval = (ListPreference) findPreference(getString(R.string.pref_key_report_interval));
+            autoRegisterPreference.setEnabled(true);
+            queryInterval.setEnabled(true);
+            reportInterval.setEnabled(true);
+            addToWorkerQueue(getContext());
         }
 
         @Override

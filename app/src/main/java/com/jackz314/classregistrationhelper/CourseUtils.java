@@ -25,6 +25,7 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -63,16 +64,15 @@ public class CourseUtils {
     static void addToWorkerQueue(Context context){
         if(isWorkScheduled(COURSE_STUFF_WORKER_NAME)) return;//quit if already scheduled
         SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
-        long repeatInterval = sharedPreferences.getLong(context.getString(R.string.pref_key_query_interval), 900);
-        long shorterInterval = sharedPreferences.getLong(context.getString(R.string.pref_key_query_interval), -1);
+        long repeatInterval = Long.parseLong(sharedPreferences.getString(context.getString(R.string.pref_key_query_interval), "900"));
 
         sharedPreferences.edit().putBoolean(context.getString(R.string.started_course_worker), true).apply();//no repeats
 
         PeriodicWorkRequest.Builder workRequestBuilder;
-        if(shorterInterval != -1){
+        if(repeatInterval <= 900){
             workRequestBuilder = new PeriodicWorkRequest.Builder(CourseStuffWorker.class, 900, TimeUnit.SECONDS, (long)15, TimeUnit.SECONDS);
             Data inputData = new Data.Builder()
-                    .putLong(WORKER_SHORTER_INTERVAL_DATA, shorterInterval)
+                    .putLong(WORKER_SHORTER_INTERVAL_DATA, repeatInterval)
                     .build();
             workRequestBuilder.setInputData(inputData);
         }else {
@@ -91,7 +91,7 @@ public class CourseUtils {
         WorkManager.getInstance().enqueueUniquePeriodicWork(COURSE_STUFF_WORKER_NAME, ExistingPeriodicWorkPolicy.KEEP, workRequestBuilder.build());
 
         //also add routine summary requests here
-        if(sharedPreferences.getLong(context.getString(R.string.pref_key_summary_interval), 24) != -1){
+        if(!sharedPreferences.getString(context.getString(R.string.pref_key_report_interval), "24").equals("-1")){
             addRountineSummaryRequest(context);
         }
     }
@@ -104,13 +104,10 @@ public class CourseUtils {
             List<WorkInfo> workInfoList = statuses.get();
             for (WorkInfo workInfo : workInfoList) {
                 WorkInfo.State state = workInfo.getState();
-                running = state == WorkInfo.State.RUNNING | state == WorkInfo.State.ENQUEUED;
+                running = state == WorkInfo.State.RUNNING || state == WorkInfo.State.ENQUEUED;
             }
             return running;
-        } catch (ExecutionException e) {
-            e.printStackTrace();
-            return false;
-        } catch (InterruptedException e) {
+        } catch (ExecutionException | InterruptedException e) {
             e.printStackTrace();
             return false;
         }
@@ -139,7 +136,7 @@ public class CourseUtils {
     static void addRountineSummaryRequest(Context context){
 
         SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
-        long summaryInterval = sharedPreferences.getLong(context.getString(R.string.pref_key_summary_interval), 24);
+        long summaryInterval = Long.parseLong(sharedPreferences.getString(context.getString(R.string.pref_key_report_interval), "24"));
 
         Constraints constraints = new Constraints.Builder()
                 .setRequiresCharging(false)
@@ -195,6 +192,8 @@ public class CourseUtils {
             }
         }
         if(coursesToRegisterCrns.isEmpty()){//no courses available to register, sad
+            addTotalStatisticCount(context);
+            addNoSeatStatisticCount(context);
             return null;
         }
         if(sharedPreferences.getBoolean(context.getString(R.string.pref_key_auto_reg), true)){
@@ -298,13 +297,13 @@ public class CourseUtils {
         String[] resultTexts = getRegisterResultTexts(courseCrns, courseNumbers, null);
 
         return new NotificationCompat.Builder(context, CHANNEL_ID)
-                .setSmallIcon(R.mipmap.ic_launcher)
+                .setSmallIcon(R.drawable.ic_notif_icon)
                 .setAutoCancel(true)
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                 .setContentTitle(resultTexts[0])
                 .setContentText(resultTexts[1])
                 .setStyle(new NotificationCompat.BigTextStyle()
-                .bigText(resultTexts[2]))
+                    .bigText(resultTexts[2]))
                 .build();
     }
 
@@ -314,7 +313,7 @@ public class CourseUtils {
         textBuilder.append(Integer.toString(courseCrns.size())).append(" courses available to register");
 
         NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(context, CHANNEL_ID)
-                .setSmallIcon(R.mipmap.ic_launcher)
+                .setSmallIcon(R.drawable.ic_notif_icon)
                 .setAutoCancel(true)
                 .setPriority(NotificationCompat.PRIORITY_MAX);
 
@@ -356,7 +355,7 @@ public class CourseUtils {
         String[] resultTexts = getRegisterResultTexts(null, courseNumbers, registerErrors);
 
         return new NotificationCompat.Builder(context, CHANNEL_ID)
-                .setSmallIcon(R.mipmap.ic_launcher)
+                .setSmallIcon(R.drawable.ic_notif_icon)
                 .setAutoCancel(true)
                 .setPriority(NotificationCompat.PRIORITY_MAX)
                 .setContentTitle(resultTexts[0])
@@ -367,30 +366,42 @@ public class CourseUtils {
     }
 
     static Notification getRegisterResultNotification(List<String> allCourseCrns, List<String> allCourseNumbers, List<String[]> registerErrors, Context context){
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
+        addTotalStatisticCount(context);
         if(allCourseCrns.size() == registerErrors.size()){
             //all registers failed
-            SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
-            if(!sharedPreferences.getBoolean(context.getString(R.string.notified_all_errors), false)){
-                sharedPreferences.edit().putBoolean(context.getString(R.string.notified_all_errors), true).apply();
+            if(sharedPreferences.getBoolean(context.getString(R.string.pref_key_notify_repeatedly), false)){
+                addFailStatisticCount(context, allCourseCrns.size());
                 return getRegisterErrorNotification(allCourseNumbers, registerErrors, context);
             }else {
-                //update registered courses see if it changed since last try, if changed, notify, otherwise go away and don't make a sound
-                processAndStoreRegisteredCourses(getMyCoursesHtml(context), context);
-                if(!sharedPreferences.getBoolean(context.getString(R.string.notified_all_errors), false)){
+                if(!sharedPreferences.getBoolean(context.getString(R.string.notified_all_errors), false)){//hasn't notified of the errors, notify
                     sharedPreferences.edit().putBoolean(context.getString(R.string.notified_all_errors), true).apply();
+                    addFailStatisticCount(context, allCourseCrns.size());
                     return getRegisterErrorNotification(allCourseNumbers, registerErrors, context);
+                }else {//notified already, don't bother notify again if it's the same set of classes
+                    //update registered courses see if it changed since last try, if changed, notify, otherwise go away and don't make a sound
+                    processAndStoreRegisteredCourses(getMyCoursesHtml(context), context);
+                    if(!sharedPreferences.getBoolean(context.getString(R.string.notified_all_errors), false)){
+                        addFailStatisticCount(context, allCourseCrns.size());
+                        return getRegisterErrorNotification(allCourseNumbers, registerErrors, context);
+                    }
+                    return null;//already notified of the errors before, don't do it again until user changes something about the courses
                 }
-                return null;//already notified of the errors before, don't do it again until user changes something about the courses
             }
         }else if(registerErrors.isEmpty()){
             //all registers succeed
+            //add statistics
+            addSuccessStatisticCount(context, allCourseCrns.size());
             return getRegisterSuccessNotification(allCourseCrns, allCourseNumbers, context);
         }else {
+            addSuccessStatisticCount(context, allCourseCrns.size() - registerErrors.size());
+            addFailStatisticCount(context, registerErrors.size());
+
             String[] resultTexts = getRegisterResultTexts(allCourseCrns, allCourseNumbers, registerErrors);
 
             NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(context, CHANNEL_ID);
             notificationBuilder.setAutoCancel(true)
-                    .setSmallIcon(R.mipmap.ic_launcher)
+                    .setSmallIcon(R.drawable.ic_notif_icon)
                     .setPriority(NotificationCompat.PRIORITY_MAX)
                     .setContentTitle(resultTexts[0]);
 
@@ -547,11 +558,67 @@ public class CourseUtils {
     static Notification getUnknownErrorNotification(Context context){
         return new NotificationCompat.Builder(context, CHANNEL_ID)
                 .setAutoCancel(true)
-                .setSmallIcon(R.mipmap.ic_launcher)
+                .setSmallIcon(R.drawable.ic_notif_icon)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setContentTitle(context.getString(R.string.notif_unknown_err_title))
                 .setContentText(context.getString(R.string.notif_unknown_err_content))
                 .build();
+    }
+
+    static Notification getRoutineStatisticReportNotification(Context context){
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
+        int successCount = sharedPreferences.getInt(context.getString(R.string.statistic_attempt_success_count), 0);
+        int failedCount = sharedPreferences.getInt(context.getString(R.string.statistic_attempt_fail_count),  0);
+        int noSeatCount = sharedPreferences.getInt(context.getString(R.string.statistic_attempt_no_seat_count),  0);
+        int totalCount = sharedPreferences.getInt(context.getString(R.string.statistic_attempt_total_count),  0);
+        String summaryText = String.format(Locale.getDefault(), "So far, %d attempts have been made, with %d meaningful ones.", totalCount, totalCount - noSeatCount);
+        String successText = String.format(Locale.getDefault(), "Successfully registered %d courses.", successCount);
+        String failText = String.format(Locale.getDefault(), "Failed to register %d courses.", failedCount);
+
+        clearStatisticsForReport(context);//start statistics over
+
+        return new NotificationCompat.Builder(context, CHANNEL_ID)
+                .setAutoCancel(true)
+                .setSmallIcon(R.drawable.ic_notif_icon)
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setContentTitle(summaryText)
+                .setContentText(successText + " " + failText)
+                .setStyle(new NotificationCompat.BigTextStyle()
+                        .bigText(successText + "\n" + failText))
+                .build();
+    }
+
+    static void clearStatisticsForReport(Context context){
+        SharedPreferences.Editor editor = PreferenceManager.getDefaultSharedPreferences(context).edit();
+        editor.putInt(context.getString(R.string.statistic_attempt_success_count), 0);
+        editor.putInt(context.getString(R.string.statistic_attempt_fail_count), 0);
+        editor.putInt(context.getString(R.string.statistic_attempt_no_seat_count), 0);
+        editor.putInt(context.getString(R.string.statistic_attempt_total_count), 0);
+        editor.apply();
+    }
+
+    static void addSuccessStatisticCount(Context context, int courseCount){
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
+        int oldSuccessCount = sharedPreferences.getInt(context.getString(R.string.statistic_attempt_success_count), 0);
+        sharedPreferences.edit().putInt(context.getString(R.string.statistic_attempt_success_count), oldSuccessCount + courseCount).apply();
+    }
+
+    static void addFailStatisticCount(Context context, int courseCount){
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
+        int oldFailCount = sharedPreferences.getInt(context.getString(R.string.statistic_attempt_fail_count), 0);
+        sharedPreferences.edit().putInt(context.getString(R.string.statistic_attempt_fail_count), oldFailCount + courseCount).apply();
+    }
+
+    static void addNoSeatStatisticCount(Context context){
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
+        int oldNoSeatCount = sharedPreferences.getInt(context.getString(R.string.statistic_attempt_no_seat_count), 0);
+        sharedPreferences.edit().putInt(context.getString(R.string.statistic_attempt_no_seat_count), ++oldNoSeatCount).apply();
+    }
+
+    static void addTotalStatisticCount(Context context){
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
+        int oldTotalCount = sharedPreferences.getInt(context.getString(R.string.statistic_attempt_no_seat_count), 0);
+        sharedPreferences.edit().putInt(context.getString(R.string.statistic_attempt_no_seat_count), ++oldTotalCount).apply();
     }
 
     //MyCourses Related
@@ -711,7 +778,7 @@ public class CourseUtils {
             registeredCourses.addAll(0, savedCourses);
         }
 
-        return fillCourseInfo(context, registeredCourses);
+        return fillCourseInfoFromCatalog(context, registeredCourses);
     }
 
     //Note: returned courses aren't fully filled to be functional yet, they only contain crn
@@ -783,8 +850,15 @@ public class CourseUtils {
         return null;
     }
 
+    static Course fillCourseInfoFromCatalog(Context context, Course course){
+        if(course == null) return null;
+        List<Course> tmp = fillCourseInfoFromCatalog(context, Collections.singletonList(course));
+        if(tmp == null || tmp.isEmpty()) return null;
+        else return tmp.get(0);
+    }
+
     //long running task
-    static List<Course> fillCourseInfo(Context context, List<Course> courses){
+    static List<Course> fillCourseInfoFromCatalog(Context context, List<Course> courses){
         if(context == null || courses == null) return null;
         String url = context.getString(R.string.get_catalog_url);
         String preferredTerm = getPreferredTerm(context);
@@ -830,6 +904,12 @@ public class CourseUtils {
             }
         }
         return filledCourses;
+    }
+
+    static Course getCourseBaseFromUrl(String url){
+        return new CourseBuilder()
+                .setCrn(url.substring(url.indexOf("crn=") + 4))
+                .buildCourse();
     }
 
     static List<String> getSavedCourseCrnsList(String list){
@@ -1020,7 +1100,6 @@ public class CourseUtils {
             //messages like "Duplicate CRN", "Class is full" or something like that
 
             List<String[]> errors = getErrorsFromRegistrationResponse(htmlResponse);
-            //todo update stored lists and registered courses and other stuff
             List<String> errorCrns = new LinkedList<>();
             for(int i = 0; i < errors.size(); i++){
                 errorCrns.add(errors.get(i)[0]);
@@ -1188,7 +1267,6 @@ public class CourseUtils {
                 return false;
             }
             //finally, the course is dropped
-            //todo update stored lists and registered courses and other stuff
             return true;
 
         } catch (IOException e) {
@@ -1481,7 +1559,7 @@ public class CourseUtils {
 
                     //multiple subject code support
                     if ((subjCode.size() > 1 && subjCode.contains(course.getMajor())) || subjCode.size() == 1) {
-                        course = changeRegisterStatusForCourse(course, context, selectionCrnSet, registeredCrnSet);//set register status to course
+                        course = fillCourseRegistrationStatus(course, context, selectionCrnSet, registeredCrnSet);//set register status to course
                         //Log.i(TAG, "Course info: " + course.toString());
                         catalog.add(course);
                     }
@@ -1494,8 +1572,15 @@ public class CourseUtils {
         }
     }
 
+    /**
+     * Fill registration status for course based on parameters
+     * @param course to set registration status for, only need crn
+     * @param context to get resources
+     * @param crnSets if provided, set registration status based on given sets (in the set means registered/on the list)
+     * @return course with registration status
+     */
     @SafeVarargs//will not pass in wrong types
-    static Course changeRegisterStatusForCourse(Course course, Context context, Set<String>... crnSets){
+    static Course fillCourseRegistrationStatus(Course course, Context context, Set<String>... crnSets){
         Set<String> selectionCrnSet, registeredCrnSet;
         SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
         if(crnSets != null && crnSets.length > 1){
@@ -1522,7 +1607,7 @@ public class CourseUtils {
                 }
             }
             if(registerStatus != null){
-                Log.i(TAG, "COURSE: " + course.getCrn() + " REGISTER STATUS: " + registerStatus);
+                //Log.i(TAG, "COURSE: " + course.getCrn() + " REGISTER STATUS: " + registerStatus);
             }
             course.setRegisterStatus(registerStatus);
         }else course.setRegisterStatus(null);//no status

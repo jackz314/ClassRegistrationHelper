@@ -1,0 +1,23 @@
+<shortcuts xmlns:tools="http://schemas.android.com/tools"
+    xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="register_all_courses"
+        android:enabled="true"
+        android:icon="@drawable/ic_register_black_24dp"
+        android:shortcutShortLabel="@string/register_all_shortcut_short_label"
+        android:shortcutLongLabel="@string/register_all_shortcut_long_label"
+        tools:targetApi="n_mr1">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.jackz314.classregistrationhelper"
+            android:targetClass="com.jackz314.classregistrationhelper.MainActivity">
+
+            <extra android:name="REGISTER_ALL_COURSES" android:value="YES_PLEASE"/>
+
+        </intent>
+        <!-- If your shortcut is associated with multiple intents, include them
+             here. The last intent in the list determines what the user sees when
+             they launch this shortcut. -->
+    </shortcut>
+    <!-- Specify more shortcuts here. -->
+</shortcuts>

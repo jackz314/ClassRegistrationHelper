@@ -1,6 +1,7 @@
 package com.jackz314.classregistrationhelper;
 
 import android.annotation.SuppressLint;
+import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Point;
@@ -47,8 +48,12 @@ import okhttp3.Response;
 import static com.jackz314.classregistrationhelper.Constants.COURSE_CHANGE_TO_LIST_CODE;
 import static com.jackz314.classregistrationhelper.Constants.COURSE_LIST_CHANGE_CRN_KEY;
 import static com.jackz314.classregistrationhelper.Constants.COURSE_REGISTER_STATUS_CHANGED;
+import static com.jackz314.classregistrationhelper.Constants.GOOGLECHROME_NAVIGATE_PREFIX;
 import static com.jackz314.classregistrationhelper.CourseUtils.addToWorkerQueue;
 import static com.jackz314.classregistrationhelper.CourseUtils.dropCourses;
+import static com.jackz314.classregistrationhelper.CourseUtils.fillCourseInfoFromCatalog;
+import static com.jackz314.classregistrationhelper.CourseUtils.fillCourseRegistrationStatus;
+import static com.jackz314.classregistrationhelper.CourseUtils.getCourseBaseFromUrl;
 import static com.jackz314.classregistrationhelper.CourseUtils.registerCourses;
 import static com.jackz314.classregistrationhelper.CourseUtils.removeFromMyList;
 
@@ -57,6 +62,7 @@ public class CourseActivity extends AppCompatActivity {
     CollapsingToolbarLayout toolbarLayout;
 
     private static String urlForCourse;
+    private Course mCourse = null;
     private String courseCrn;
     private static final String TAG = "CourseActivity";
 
@@ -77,8 +83,9 @@ public class CourseActivity extends AppCompatActivity {
         registerStatusText = findViewById(R.id.course_register_status);
         courseFab = findViewById(R.id.fab_add_to_list);
 
-        urlForCourse = getIntent().getBundleExtra("bundle").getString("URL");
-        if(urlForCourse == null) return;
+        urlForCourse = handleIntent(getIntent());
+
+        if (urlForCourse == null) return;
         courseCrn = urlForCourse.substring(urlForCourse.indexOf("crn=") + 4);
 
         contentLayout = findViewById(R.id.course_detail_content_layout);
@@ -90,6 +97,26 @@ public class CourseActivity extends AppCompatActivity {
         setSupportActionBar(findViewById(R.id.course_toolbar));
         Objects.requireNonNull(getSupportActionBar()).setDisplayShowHomeEnabled(true);
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+    }
+
+    /**
+     * Handles incoming intent, could be coming from app action, or external url, determine here and return the final url to show
+     * Checks for external url first, if none, fall back to check for app provided url intent and fill course object from intent
+     * Then if none, fall back to null
+     *
+     * @param intent incoming intent from other sources (MainActivity or external)
+     * @return final URL of the mCourse, Null if neither app or external has provided a url (shouldn't happen)
+     */
+    private String handleIntent(Intent intent) {
+        String appLinkAction = intent.getAction();
+        Uri appLinkData = intent.getData();
+        if (Intent.ACTION_VIEW.equals(appLinkAction) && appLinkData != null){
+            String url = appLinkData.toString();
+            if(!url.isEmpty()) return url;
+        }
+        //otherwise fill course from intent
+        mCourse = intent.getBundleExtra("bundle").getParcelable("CourseInfo");
+        return intent.getBundleExtra("bundle").getString("URL");
     }
 
     private static class GetCourseDetailTask extends AsyncTask<Void, Void, Course>{
@@ -115,12 +142,15 @@ public class CourseActivity extends AppCompatActivity {
                 }else {
                     return null;//empty
                 }
-                Course course = activity.getIntent().getBundleExtra("bundle").getParcelable("CourseInfo");
+                Course course = activity.mCourse;
                 if(course == null) {
-                    //something wrong with the intent to this activity, can't proceed, abort, notify user, and finish activity
-                    Toast.makeText(activity, activity.getString(R.string.toast_unknown_error), Toast.LENGTH_SHORT).show();
-                    activity.finish();
-                    return null;
+                    course = fillCourseInfoFromCatalog(activity, fillCourseRegistrationStatus(getCourseBaseFromUrl(urlForCourse), activity));
+                    if(course == null){
+                        //something wrong with the intent to this activity, can't proceed, abort, notify user, and finish activity
+                        Toast.makeText(activity, activity.getString(R.string.toast_unknown_error), Toast.LENGTH_SHORT).show();
+                        activity.finish();
+                        return null;
+                    }
                 }
                 CourseBuilder courseBuilder = course.newBuilder();
                 Document document = Jsoup.parse(htmlResponse);
@@ -148,7 +178,7 @@ public class CourseActivity extends AppCompatActivity {
                     if (identifier.contains("You must have declared one of the following majors")){
                         courseBuilder.setMajorRestrictionYes(restrictionElement.child(0).children().eachText()
                                 .subList(1, restrictionElement.child(0).children().eachText().size()));
-                    }else if (identifier.contains("You may not take this course if you have declared the following majors")){
+                    }else if (identifier.contains("You may not take this mCourse if you have declared the following majors")){
                         courseBuilder.setMajorRestrictionNo(restrictionElement.child(0).children().eachText()
                                 .subList(1, restrictionElement.child(0).children().eachText().size()));
                     }else if (identifier.contains("You may not be a part of the following colleges")){
@@ -160,7 +190,7 @@ public class CourseActivity extends AppCompatActivity {
                     }else if (identifier.contains("Your level status can not be one of the following")){
                         courseBuilder.setLevelRestrictionNo(restrictionElement.child(0).children().eachText()
                                 .subList(1, restrictionElement.child(0).children().size()));
-                    }else if(identifier.contains("Prerequisites for this course")){
+                    }else if(identifier.contains("Prerequisites for this mCourse")){
                         //prerequisite structure is kind of messy, maybe deal with it later in a more organized way, for now, just get all the text
                         Element removeFirst = restrictionElement.child(0);
                         removeFirst.child(0).remove();
@@ -715,6 +745,30 @@ public class CourseActivity extends AppCompatActivity {
         }
     }
 
+    private void openUrlInChrome(String url) {
+        try {
+            try {
+                Uri uri = Uri.parse(GOOGLECHROME_NAVIGATE_PREFIX + url);
+                Intent i = new Intent(Intent.ACTION_VIEW, uri);
+                i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(i);
+            } catch (ActivityNotFoundException e) {
+                Uri uri = Uri.parse(url);
+                // Chrome is probably not installed
+                // OR not selected as default browser OR if no Browser is selected as default browser
+                Intent sendIntent = new Intent(Intent.ACTION_VIEW, uri);
+                // Create intent to show the chooser dialog
+                Intent chooser = Intent.createChooser(sendIntent, null);
+                // Verify the original intent will resolve to at least one activity
+                if (sendIntent.resolveActivity(getPackageManager()) != null) {
+                    startActivity(chooser);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
@@ -730,7 +784,7 @@ public class CourseActivity extends AppCompatActivity {
         int id = item.getItemId();
         switch (id){
             case R.id.action_goto_detail:
-                startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(urlForCourse)));
+                openUrlInChrome(urlForCourse);
                 break;
             case R.id.action_force_register:
                 registerCourse();

@@ -44,7 +44,6 @@ import static com.jackz314.classregistrationhelper.Constants.COURSE_LIST_CHANGE_
 import static com.jackz314.classregistrationhelper.Constants.COURSE_REGISTER_STATUS_CHANGED;
 import static com.jackz314.classregistrationhelper.Constants.LOGIN_REQUEST_CODE;
 import static com.jackz314.classregistrationhelper.Constants.LOGIN_SUCCESS_CODE;
-import static com.jackz314.classregistrationhelper.CourseUtils.fillCourseInfo;
 import static com.jackz314.classregistrationhelper.CourseUtils.getAllSelectionCourseList;
 import static com.jackz314.classregistrationhelper.CourseUtils.getMyCoursesHtml;
 import static com.jackz314.classregistrationhelper.CourseUtils.getPreferredTerm;
@@ -153,6 +152,10 @@ public class MyCoursesFragment extends Fragment {
             loggedIn = false;
             onLoadFinished();//no need to load at the moment, so let catalog load now.
         }else {
+            if(checkHasAction()){
+                //register all if this is called from shortcuts
+                new RegisterAllCourseTask(this).execute();
+            }
             loggedIn = true;
             loadProgress.setVisibility(View.VISIBLE);
             executeGetMyCourses();
@@ -207,7 +210,7 @@ public class MyCoursesFragment extends Fragment {
                 }
             }
             List<Course> savedCourses = getSavedCoursesList(context);
-            savedCourses = fillCourseInfo(context, savedCourses);
+            savedCourses = CourseUtils.fillCourseInfoFromCatalog(context, savedCourses);
             if(savedCourses != null){
                 List<Course> combinedCourses = new LinkedList<>(savedCourses);
                 combinedCourses.addAll(registeredCourses);
@@ -455,6 +458,13 @@ public class MyCoursesFragment extends Fragment {
         }
     }
 
+    boolean checkHasAction(){
+        if (mListener != null) {
+            return mListener.checkHasShortcutAction();
+        }
+        return false;
+    }
+
     @Override
     public void onAttach(Context context) {
         super.onAttach(context);
@@ -569,6 +579,8 @@ public class MyCoursesFragment extends Fragment {
         void myCourseOnListStatusChanged(String crn);
 
         void myCourseOnLoadFinished();
+
+        boolean checkHasShortcutAction();
 
     }
 }

@@ -8,6 +8,7 @@ import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
+import android.util.Log;
 import android.view.MenuItem;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -34,6 +35,8 @@ import static com.jackz314.classregistrationhelper.Constants.LOGIN_REQUEST_CODE;
 import static com.jackz314.classregistrationhelper.Constants.LOGIN_SUCCESS_CODE;
 import static com.jackz314.classregistrationhelper.Constants.LOGOUT_REQUEST_CODE;
 import static com.jackz314.classregistrationhelper.Constants.LOGOUT_SUCCESS_CODE;
+import static com.jackz314.classregistrationhelper.Constants.SHORTCUT_INTENT_EXTRA_KEY;
+import static com.jackz314.classregistrationhelper.Constants.SHORTCUT_INTENT_EXTRA_VALUE;
 
 public class MainActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener, CatalogFragment.CatalogOnFragmentInteractionListener, MyCoursesFragment.MyCoursesOnFragmentInteractionListener {
@@ -49,6 +52,7 @@ public class MainActivity extends AppCompatActivity
     TextView navHeaderSubtitle;
     ImageView navHeaderProfilePic;
     boolean myCoursesLoadFinished = false, catalogLoadFinished = false;
+    boolean hasShortCutAction = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -60,6 +64,17 @@ public class MainActivity extends AppCompatActivity
        /* FloatingActionButton fab = findViewById(R.id.fab);
         fab.setOnClickListener(view -> Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
                 .setAction("Action", null).show());*/
+
+       //get register all shortcut action
+        Intent intent = getIntent();
+        if(intent != null
+                && intent.getExtras() != null
+                && intent.getStringExtra(SHORTCUT_INTENT_EXTRA_KEY) != null
+                && intent.getStringExtra(SHORTCUT_INTENT_EXTRA_KEY).equals(SHORTCUT_INTENT_EXTRA_VALUE)){
+            //register all intent
+            Log.i(TAG, "SHORTCUT REGISTER ACTION");
+            hasShortCutAction = true;
+        }
 
         tabPagerAdapter = new TabPagerAdapter(getApplicationContext(), getSupportFragmentManager());
         viewPager = findViewById(R.id.tab_view_pager);
@@ -327,5 +342,10 @@ public class MainActivity extends AppCompatActivity
         if(catalogFragment != null){
             catalogFragment.startLoading();
         }
+    }
+
+    @Override
+    public boolean checkHasShortcutAction() {
+        return hasShortCutAction;
     }
 }

@@ -23,9 +23,11 @@
             android:theme="@style/AppTheme.NoActionBar">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
         </activity>
         <activity
             android:name=".SettingsActivity"
@@ -43,12 +45,18 @@
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value="com.jackz314.classregistrationhelper.MainActivity" />
-        </activity>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
 
-        <service
-            android:name=".CourseStuffWorker"
-            android:enabled="true"
-            android:exported="true" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data
+                    android:scheme="https"
+                    android:host="mystudentrecord.ucmerced.edu"
+                    android:pathPrefix="/pls/PROD/xhwschedule.P_ViewCrnDetail" />
+            </intent-filter>
+        </activity>
 
         <activity
             android:name=".LoginActivity"
