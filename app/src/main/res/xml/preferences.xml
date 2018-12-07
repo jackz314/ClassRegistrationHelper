@@ -30,6 +30,16 @@
 
     <PreferenceCategory android:title="Course Registration">
 
+        <Preference
+            android:key="@string/pref_key_schedule_register"
+            android:title="@string/pref_title_schedule_register"
+            android:summary="@string/pref_content_schedule_register"/>
+
+        <Preference
+            android:key="@string/pref_key_cancel_schedule"
+            android:title="@string/pref_title_cancel_schedule"
+            android:summary="@string/pref_content_cancel_schedule"/>
+
         <SwitchPreference
             android:defaultValue="true"
             android:key="@string/pref_key_auto_check"

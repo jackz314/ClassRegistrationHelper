@@ -1,8 +1,12 @@
 package com.jackz314.classregistrationhelper;
 
+import android.app.AlarmManager;
 import android.app.Notification;
+import android.app.PendingIntent;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
+import android.os.Build;
 import android.preference.PreferenceManager;
 import android.text.TextUtils;
 import android.util.Log;
@@ -50,6 +54,8 @@ import okhttp3.ResponseBody;
 import okio.Buffer;
 
 import static com.jackz314.classregistrationhelper.AccountUtils.reauthorizeWithCastgc;
+import static com.jackz314.classregistrationhelper.Constants.ALARM_MANAGER_INTENT_ID;
+import static com.jackz314.classregistrationhelper.Constants.BROADCAST_REGISTER_ACTION;
 import static com.jackz314.classregistrationhelper.Constants.CHANNEL_ID;
 import static com.jackz314.classregistrationhelper.Constants.COURSE_STUFF_WORKER_NAME;
 import static com.jackz314.classregistrationhelper.Constants.WORKER_IS_SUMMARY_JOB;
@@ -363,6 +369,33 @@ public class CourseUtils {
                 .setStyle(new NotificationCompat.BigTextStyle()
                     .bigText(resultTexts[2]))
                 .build();
+    }
+
+    static Notification getScheduleRegisterResultNotification(List<String> allCourseCrns, List<String> allCourseNumbers, List<String[]> registerErrors, Context context){
+        addTotalStatisticCount(context);
+        if(allCourseCrns.size() == registerErrors.size()){
+            //all registers failed
+            addFailStatisticCount(context, allCourseCrns.size());
+            return getRegisterErrorNotification(allCourseNumbers, registerErrors, context);
+
+        }else if(registerErrors.isEmpty()){
+            //all registers succeed
+            return getRegisterSuccessNotification(allCourseCrns, allCourseNumbers, context);
+        }else {
+            String[] resultTexts = getRegisterResultTexts(allCourseCrns, allCourseNumbers, registerErrors);
+
+            NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(context, CHANNEL_ID);
+            notificationBuilder.setAutoCancel(true)
+                    .setSmallIcon(R.drawable.ic_notif_icon)
+                    .setPriority(NotificationCompat.PRIORITY_MAX)
+                    .setContentTitle(resultTexts[0]);
+
+            notificationBuilder.setContentText(resultTexts[1]);
+            notificationBuilder.setStyle(new NotificationCompat.BigTextStyle()
+                    .bigText(resultTexts[2]));
+
+            return notificationBuilder.build();
+        }
     }
 
     static Notification getRegisterResultNotification(List<String> allCourseCrns, List<String> allCourseNumbers, List<String[]> registerErrors, Context context){
@@ -1639,4 +1672,43 @@ public class CourseUtils {
         return courseBuilder;
     }
 
+    //schedule register related
+    static void scheduleRegistration(Context context, long scheduleTime){
+        AlarmManager alarmManager = (AlarmManager)context.getSystemService(Context.ALARM_SERVICE);
+        if(alarmManager != null){
+            Intent broadcastIntent = new Intent(context, ScheduleRegisterReceiver.class);
+            broadcastIntent.setAction(BROADCAST_REGISTER_ACTION);
+            PendingIntent alarmPendingIntent = PendingIntent.getBroadcast(context, ALARM_MANAGER_INTENT_ID, broadcastIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+            Log.i(TAG, "ALARM SET at " + scheduleTime + ", current time: " + System.currentTimeMillis() + ", time difference: " + ((scheduleTime - System.currentTimeMillis()) / 1000) + " seconds");
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, scheduleTime, alarmPendingIntent);
+            }else {
+                alarmManager.setExact(AlarmManager.RTC_WAKEUP, scheduleTime, alarmPendingIntent);
+            }
+        }
+    }
+
+    static void cancelScheduledRegistration(Context context){
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
+        sharedPreferences.edit().putLong(context.getString(R.string.pref_key_schedule_register), -1).apply();
+
+        //cancel alarm
+        Intent broadcastIntent = new Intent(context, ScheduleRegisterReceiver.class);
+        broadcastIntent.setAction(BROADCAST_REGISTER_ACTION);
+        PendingIntent alarmPendingIntent = PendingIntent.getBroadcast(context, ALARM_MANAGER_INTENT_ID, broadcastIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+        AlarmManager alarmManager = (AlarmManager)context.getSystemService(Context.ALARM_SERVICE);
+        if(alarmManager != null){
+            alarmManager.cancel(alarmPendingIntent);
+        }
+        alarmPendingIntent.cancel();
+        Log.i(TAG, "REGISTER ALARM CANCELLED");
+    }
+
+    static void rescheduleRegisterAlarm(Context context){
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
+        long scheduledTime = sharedPreferences.getLong(context.getString(R.string.pref_key_schedule_register), -1);
+        if(scheduledTime != -1){
+            scheduleRegistration(context, scheduledTime);
+        }
+    }
 }

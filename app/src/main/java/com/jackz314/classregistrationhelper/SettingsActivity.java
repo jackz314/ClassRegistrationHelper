@@ -1,5 +1,7 @@
 package com.jackz314.classregistrationhelper;
 
+import android.app.DatePickerDialog;
+import android.app.TimePickerDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -19,18 +21,25 @@ import android.preference.RingtonePreference;
 import android.preference.SwitchPreference;
 import android.provider.Settings;
 import android.text.TextUtils;
+import android.text.format.DateFormat;
 import android.view.MenuItem;
+import android.widget.Toast;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 
 import androidx.appcompat.app.ActionBar;
 import androidx.core.app.NavUtils;
 import androidx.work.WorkManager;
 
 import static com.jackz314.classregistrationhelper.CourseUtils.addToWorkerQueue;
+import static com.jackz314.classregistrationhelper.CourseUtils.cancelScheduledRegistration;
+import static com.jackz314.classregistrationhelper.CourseUtils.scheduleRegistration;
 
 /**
  * A {@link PreferenceActivity} that presents a set of application settings. On
@@ -44,6 +53,8 @@ import static com.jackz314.classregistrationhelper.CourseUtils.addToWorkerQueue;
  * API Guide</a> for more information on developing a Settings UI.
  */
 public class SettingsActivity extends AppCompatPreferenceActivity {
+
+    private static final String TAG = "SettingsActivity";
 
     /**
      * A preference value change listener that updates the preference's summary
@@ -249,6 +260,18 @@ public class SettingsActivity extends AppCompatPreferenceActivity {
                 return true;
             });
 
+            Preference schedulePreference = findPreference(getString(R.string.pref_key_schedule_register));
+            schedulePreference.setOnPreferenceClickListener(preference -> {
+                showDateAndTimeDialog();
+                return false;
+            });
+
+            Preference cancelSchedulePreference = findPreference(getString(R.string.pref_key_cancel_schedule));
+            cancelSchedulePreference.setOnPreferenceClickListener(preference -> {
+                cancelScheduledRegistration(getContext());
+                return false;
+            });
+
             SwitchPreference autoCheckPreference = (SwitchPreference)findPreference(getString(R.string.pref_key_auto_check));
 
             //disable preferences when there's no login info
@@ -294,6 +317,46 @@ public class SettingsActivity extends AppCompatPreferenceActivity {
                 return true;
             });
 
+        }
+
+        private void showDateAndTimeDialog(){
+            Calendar currentTime = Calendar.getInstance();
+
+            SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getContext());
+            long scheduledTime = sharedPreferences.getLong(getString(R.string.pref_key_schedule_register), -1);
+            if(scheduledTime != -1){
+                currentTime.setTimeInMillis(scheduledTime);
+            }
+
+            int year = currentTime.get(Calendar.YEAR);
+            int month = currentTime.get(Calendar.MONTH);
+            int day = currentTime.get(Calendar.DAY_OF_MONTH);
+            new DatePickerDialog(getContext(), (view, year1, month1, dayOfMonth) -> showTimeDialog(year1, month1, dayOfMonth), year, month, day).show();
+        }
+
+        private void showTimeDialog(int year, int month, int day){
+            Calendar currentTime = Calendar.getInstance();
+
+            SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getContext());
+            long scheduledTime = sharedPreferences.getLong(getString(R.string.pref_key_schedule_register), -1);
+            if(scheduledTime != -1){
+                currentTime.setTimeInMillis(scheduledTime);
+            }
+
+            int hour = currentTime.get(Calendar.HOUR);
+            int minute = currentTime.get(Calendar.MINUTE);
+            new TimePickerDialog(getContext(), (view, hourOfDay, minute1) -> {
+                Calendar scheduleCalendar = Calendar.getInstance();
+                scheduleCalendar.set(year, month, day, hourOfDay, minute1);
+
+                SimpleDateFormat sdf = (SimpleDateFormat) SimpleDateFormat.getDateTimeInstance();
+                String dateString = sdf.format(scheduleCalendar.getTime());
+                Toast.makeText(getContext(), String.format(Locale.getDefault(), "Scheduled registration set for : %s", dateString), Toast.LENGTH_SHORT).show();
+
+                long scheduleTime = scheduleCalendar.getTimeInMillis();
+                scheduleRegistration(getContext(), scheduleTime);
+                sharedPreferences.edit().putLong(getString(R.string.pref_key_schedule_register), scheduleTime).apply();
+            }, hour, minute, DateFormat.is24HourFormat(getContext())).show();
         }
 
         private void disableCourseCheckStuff(){

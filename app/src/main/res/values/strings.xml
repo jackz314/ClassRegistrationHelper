@@ -100,6 +100,14 @@
     <string name="pref_title_notify_repeatedly">Notify me of registration errors every time</string>
     <string name="pref_content_notify_repeatedly">Notify me of existing errors repeatedly even if there\'s no change on my course list just to be safe (E.g. there could be server side course changes)</string>
 
+    <string name="pref_key_schedule_register">pref_key_schedule_register</string>
+    <string name="pref_title_schedule_register">Schedule a registration</string>
+    <string name="pref_content_schedule_register">Schedule a registration to run at a specific time, perhaps your registration date</string>
+
+    <string name="pref_key_cancel_schedule">pref_key_cancel_schedule</string>
+    <string name="pref_title_cancel_schedule">Cancel scheduled registration</string>
+    <string name="pref_content_cancel_schedule">Cancel a scheduled registration, it\'s OK to change your mind :)</string>
+
     <string name="pref_key_query_interval">pref_key_query_interval</string>
     <string name="pref_title_query_interval">Auto check interval</string>
     <string name="pref_content_query_interval">How often to check for available courses with the server</string>
@@ -184,7 +192,6 @@
 
     <string name="external_changed_list">external_changed_list</string>
     <string name="external_changed_register_status">external_changed_register_status</string>
-
 
     <string name="channel_name">Course watcher status updates</string>
     <string name="channel_description">Notifications for status updates for courses on your list</string>

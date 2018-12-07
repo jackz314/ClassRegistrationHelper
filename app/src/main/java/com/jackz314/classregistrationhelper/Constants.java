@@ -27,4 +27,10 @@ public final class Constants {
     static final String SHORTCUT_INTENT_EXTRA_VALUE = "YES_PLEASE";
     static final String GOOGLECHROME_NAVIGATE_PREFIX = "googlechrome://navigate?url=";
 
+    //background intent constants
+    static final String ANDROID_BOOT_COMPLETE_INTENT = "android.intent.action.BOOT_COMPLETED";
+    static final String BROADCAST_REGISTER_ACTION = "boradcast_register_action";
+    static final int ALARM_MANAGER_INTENT_ID = 9301;//the number doesn't matter
+
+
 }

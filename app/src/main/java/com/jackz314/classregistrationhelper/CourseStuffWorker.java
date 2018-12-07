@@ -2,8 +2,6 @@ package com.jackz314.classregistrationhelper;
 
 import android.app.Notification;
 import android.content.Context;
-import android.content.SharedPreferences;
-import android.preference.PreferenceManager;
 
 import androidx.annotation.NonNull;
 import androidx.core.app.NotificationManagerCompat;
@@ -34,7 +32,6 @@ public class CourseStuffWorker extends Worker {
             if(shorterInterval != -1){
                 addShorterIntervalRequests(shorterInterval);
             }
-            SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
             Notification resultNotification;
             try{
                 resultNotification = checkAndRegisterCourses(getApplicationContext());
