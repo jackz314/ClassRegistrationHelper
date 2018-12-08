@@ -289,7 +289,7 @@ public class Course implements Parcelable {
         if(type.equals("LAB")) return "Lab";
         if(type.equals("SEM")) return "Seminar";
         if(type.equals("STDO")) return "Studio";
-        //if(type.equals("FLDW")) return "Future Light Digital Workshops";//not sure
+        if(type.equals("FLDW")) return "Fieldwork";
         return type;//just in case none of them matches, return the original string
     }
 

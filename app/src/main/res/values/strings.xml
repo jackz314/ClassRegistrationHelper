@@ -24,6 +24,7 @@
     <string name="get_catalog_url">https://mystudentrecord.ucmerced.edu/pls/PROD/xhwschedule.P_ViewSchedule</string>
     <string name="get_request_catalog_url">https://mystudentrecord.ucmerced.edu/pls/PROD/xhwschedule.P_selectsubject</string>
     <string name="get_faculty_directory_url">https://www.ucmerced.edu/faculty-directory</string>
+    <string name="faculty_detail_root_url">https://www.ucmerced.edu</string>
     <string name="get_my_list_url">https://mystudentrecord.ucmerced.edu/pls/PROD/bwskfreg.P_AltPin</string>
     <string name="register_courses_url">https://mystudentrecord.ucmerced.edu/pls/PROD/bwckcoms.P_Regs</string>
     <!-- Sign in URLs -->

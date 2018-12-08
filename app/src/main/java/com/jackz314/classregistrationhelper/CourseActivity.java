@@ -9,12 +9,18 @@ import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
+import android.text.SpannableString;
+import android.text.Spanned;
+import android.text.TextPaint;
+import android.text.method.LinkMovementMethod;
+import android.text.style.ClickableSpan;
 import android.util.Log;
 import android.view.Display;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -54,6 +60,8 @@ import static com.jackz314.classregistrationhelper.CourseUtils.dropCourses;
 import static com.jackz314.classregistrationhelper.CourseUtils.fillCourseInfoFromCatalog;
 import static com.jackz314.classregistrationhelper.CourseUtils.fillCourseRegistrationStatus;
 import static com.jackz314.classregistrationhelper.CourseUtils.getCourseBaseFromUrl;
+import static com.jackz314.classregistrationhelper.CourseUtils.getInstructorDetailMainText;
+import static com.jackz314.classregistrationhelper.CourseUtils.getInstructorFromHtml;
 import static com.jackz314.classregistrationhelper.CourseUtils.registerCourses;
 import static com.jackz314.classregistrationhelper.CourseUtils.removeFromMyList;
 
@@ -121,6 +129,10 @@ public class CourseActivity extends AppCompatActivity {
         //otherwise fill course from intent
         mCourse = intent.getBundleExtra("bundle").getParcelable("CourseInfo");
         return intent.getBundleExtra("bundle").getString("URL");
+    }
+
+    private void setInstructorDetailInfo(String detailUrl){
+        new GetInstructorDetailTask(this).execute(detailUrl);
     }
 
     private static class GetCourseDetailTask extends AsyncTask<Void, Void, Course>{
@@ -232,11 +244,11 @@ public class CourseActivity extends AppCompatActivity {
         }
     }
 
-    private static class GetInstructorPhoto extends AsyncTask<String, Void, String>{
+    private static class GetInstructorPhotoTask extends AsyncTask<String, Void, String>{
 
         private WeakReference<CourseActivity> activityReference;
 
-        GetInstructorPhoto(CourseActivity activity){
+        GetInstructorPhotoTask(CourseActivity activity){
             activityReference = new WeakReference<>(activity);
         }
 
@@ -261,14 +273,16 @@ public class CourseActivity extends AppCompatActivity {
                 //select ones that contain instructor's last name
                 String instructorLastName = instructorName.substring(0, instructorName.indexOf(','));
                 String instructorFirstName = instructorName.substring(instructorName.indexOf(' ') + 1);
-                Elements elements = document.select("a:contains(" + instructorLastName + ")")//last name
+                Elements facultyElements = document.select("a:contains(" + instructorLastName + ")")//last name
                         .select("a:contains(" + instructorFirstName + ")")//first name
                         .select("a:not(:contains(@))");//remove email elements
-                Log.i(TAG, elements.toString());
-                Element instructorElement = elements.first();//shouldn't have more than one, but just in case, select the first one
+                Log.i(TAG, facultyElements.toString());
+                Element instructorElement = facultyElements.first();//shouldn't have more than one, but just in case, select the first one
                 if(instructorElement == null){
                     return null;
                 }
+                //pass info to main thread to set instructor detail info
+                activity.setInstructorDetailInfo(activity.getString(R.string.faculty_detail_root_url) + instructorElement.attr("href"));
                 Element photoElement = instructorElement.parent().previousElementSibling().child(0);
                 Log.i(TAG, photoElement.toString());
                 return photoElement.attr("src");
@@ -306,8 +320,92 @@ public class CourseActivity extends AppCompatActivity {
         }
     }
 
+    private static class GetInstructorDetailTask extends AsyncTask<String, Void, Instructor> {
+
+        private WeakReference<CourseActivity> activityReference;
+
+        GetInstructorDetailTask(CourseActivity activity){
+            activityReference = new WeakReference<>(activity);
+        }
+
+        @Override
+        protected Instructor doInBackground(String... strings) {
+            String instructorUrl = strings[0];
+            if(instructorUrl == null || instructorUrl.isEmpty()) return null;
+            OkHttpClient client = new OkHttpClient();
+            Request request = new Request.Builder()
+                    .url(instructorUrl)
+                    .build();
+            try {
+                Response response = client.newCall(request).execute();
+                String htmlResponse;
+                if(response.body() == null) return null;
+                htmlResponse = response.body().string();
+                Instructor instructor = getInstructorFromHtml(htmlResponse);
+                instructor.setUrl(instructorUrl);
+                return instructor;
+            } catch (IOException e) {
+                e.printStackTrace();
+                activityReference.get().runOnUiThread(() -> Toast.makeText(activityReference.get(), activityReference.get().getString(R.string.toast_internet_error), Toast.LENGTH_SHORT).show());
+            } catch (Exception e){
+                e.printStackTrace();
+                activityReference.get().runOnUiThread(() -> Toast.makeText(activityReference.get(), activityReference.get().getString(R.string.toast_unknown_error), Toast.LENGTH_SHORT).show());
+            }
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(Instructor instructor) {
+            activityReference.get().setUpInstructorDetailDialog(instructor);
+            super.onPostExecute(instructor);
+        }
+    }
+
+    void setUpInstructorDetailDialog(Instructor instructor){
+        if(instructor == null) return;
+        TextView instructorText = findViewById(R.id.course_instructor);
+        //set instructor textview clickable with link appearance
+        SpannableString ss = new SpannableString(instructorText.getText());
+        ClickableSpan clickableSpan = new ClickableSpan() {
+            @Override
+            public void onClick(View textView) {
+                getInstructorDetailDialog(instructor).show();
+            }
+            @Override
+            public void updateDrawState(TextPaint ds) {
+                super.updateDrawState(ds);
+                ds.setUnderlineText(true);
+            }
+        };
+        ss.setSpan(clickableSpan, 0, ss.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        instructorText.setText(ss);
+        instructorText.setMovementMethod(LinkMovementMethod.getInstance());
+    }
+
+    AlertDialog getInstructorDetailDialog(Instructor instructor){
+        LayoutInflater inflater = getLayoutInflater();
+        View customView = inflater.inflate(R.layout.instructor_detail_dialog_layout, null);
+        TextView mainText = customView.findViewById(R.id.instructor_dialog_main_text);
+        TextView nameText = customView.findViewById(R.id.instructor_dialog_name_text);
+        Button moreButton = customView.findViewById(R.id.instructor_dialog_more_button);
+
+        nameText.setText(instructor.getName());
+        moreButton.setOnClickListener(v -> {
+            //open faculty detail page
+            Intent i = new Intent(Intent.ACTION_VIEW);
+            i.setData(Uri.parse(instructor.getUrl()));
+            startActivity(i);
+        });
+        mainText.setText(getInstructorDetailMainText(instructor));
+        return new AlertDialog.Builder(this)
+                .setView(customView)
+                .setCancelable(true)
+//                .setTitle("Instructor Details")
+                .create();
+    }
+
     void setUiFromCourse(Course course){
-        new GetInstructorPhoto(this).execute(course.getInstructor());
+        new GetInstructorPhotoTask(this).execute(course.getInstructor());
         toolbarLayout.setTitle(course.getNumber());
         TextView titleText = findViewById(R.id.course_title);
         TextView crnText = findViewById(R.id.course_crn);
@@ -613,7 +711,6 @@ public class CourseActivity extends AppCompatActivity {
 
     void registerCourse(){
         new RegisterCourseTask(this).execute();
-
     }
 
     void dropCourse(){
@@ -762,9 +859,9 @@ public class CourseActivity extends AppCompatActivity {
                 i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 startActivity(i);
             } catch (ActivityNotFoundException e) {
-                Uri uri = Uri.parse(url);
                 // Chrome is probably not installed
                 // OR not selected as default browser OR if no Browser is selected as default browser
+                Uri uri = Uri.parse(url);
                 Intent sendIntent = new Intent(Intent.ACTION_VIEW, uri);
                 // Create intent to show the chooser dialog
                 Intent chooser = Intent.createChooser(sendIntent, null);

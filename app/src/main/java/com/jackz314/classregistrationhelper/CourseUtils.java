@@ -10,6 +10,7 @@ import android.os.Build;
 import android.preference.PreferenceManager;
 import android.text.TextUtils;
 import android.util.Log;
+import android.util.Pair;
 import android.widget.Toast;
 
 import com.google.common.collect.Lists;
@@ -1603,6 +1604,139 @@ public class CourseUtils {
             e.printStackTrace();
             return catalog;//empty
         }
+    }
+
+    static String getInstructorDetailMainText(Instructor instructor){
+        StringBuilder mainTextBuilder = new StringBuilder();
+        if(instructor.getTitle() != null){
+            mainTextBuilder.append("Title:\n")
+                    .append(instructor.getTitle())
+                    .append("\n\n");
+        }
+        if(instructor.getEmail() != null){
+            mainTextBuilder.append("Email:\n")
+                    .append(instructor.getEmail())
+                    .append("\n\n");
+        }
+        if(instructor.getPhone() != null){
+            mainTextBuilder.append("Phone:\n")
+                    .append(instructor.getPhone())
+                    .append("\n\n");
+        }
+        if(instructor.getOffice() != null){
+            mainTextBuilder.append("Office:\n")
+                    .append(instructor.getOffice())
+                    .append("\n\n");
+        }
+        if(instructor.getEducation() != null){
+            mainTextBuilder.append("Education:\n")
+                    .append(instructor.getEducation())
+                    .append("\n\n");
+        }
+        if(instructor.getResearchInterest() != null){
+            mainTextBuilder.append("Research Interest:\n")
+                    .append(instructor.getResearchInterest())
+                    .append("\n\n");
+        }
+        if(instructor.getDiscipline() != null){
+            mainTextBuilder.append("Discipline:\n")
+                    .append(instructor.getDiscipline())
+                    .append("\n\n");
+        }
+        if(instructor.getOtherInfo() != null && !instructor.getOtherInfo().isEmpty()){
+            List<Pair<String, String >> otherInfo = instructor.getOtherInfo();
+            for (Pair<String, String> infoPair : otherInfo) {
+                mainTextBuilder.append(infoPair.first)
+                        .append(":\n")
+                        .append(infoPair.second)
+                        .append("\n\n");
+            }
+        }
+        //remove the last two newlines
+        String mainText = mainTextBuilder.toString();
+        if(mainText.endsWith("\n\n")){
+            mainText = mainText.substring(0, mainText.length() - 2);
+        }
+        return mainText;
+    }
+
+    static Instructor getInstructorFromHtml(String html){
+        Document document = Jsoup.parse(html);
+        Elements fieldElements = document.select("[class=field-label]");
+        Instructor instructor = new Instructor();
+        Element nameElement = document.selectFirst("[class=title]");
+        instructor.setName(nameElement.text());
+        for (Element fieldElement : fieldElements) {
+            String label = fieldElement.text().replace(":", "");
+            switch (label){
+                case "Title":{
+                    String content = fieldElement.nextElementSibling().text();
+                    instructor.setTitle(content);
+                    break;
+                }
+                case "Email":{
+                    String content = fieldElement.nextElementSibling().text();
+                    instructor.setEmail(content);
+                    break;
+                }
+                case "Phone":{
+                    String content = fieldElement.nextElementSibling().text();
+                    instructor.setPhone(content);
+                    break;
+                }
+                case "Office":{
+                    String content = fieldElement.nextElementSibling().text();
+                    instructor.setOffice(content);
+                    break;
+                }
+                case "Education":{
+                    Element contentElement = fieldElement.nextElementSibling();
+                    if(contentElement.child(0).child(0).tagName().equals("ul")){
+                        Elements subElements = contentElement.child(0).child(0).children();
+                        StringBuilder builder = new StringBuilder();
+                        for (Element subElement : subElements) {
+                            builder.append('-')
+                                    .append(subElement.text())
+                                    .append('\n');
+                        }
+                        builder.deleteCharAt(builder.length() - 1);
+                        instructor.setEducation(builder.toString());
+                    }else {
+                        String content = contentElement.text();
+                        instructor.setEducation(content);
+                    }
+                    break;
+                }
+                case "Research Interests":{
+                    Element contentElement = fieldElement.nextElementSibling();
+                    if(contentElement.child(0).child(0).tagName().equals("ul")){
+                        Elements subElements = contentElement.child(0).child(0).children();
+                        StringBuilder builder = new StringBuilder();
+                        for (Element subElement : subElements) {
+                            builder.append('-')
+                                    .append(subElement.text())
+                                    .append('\n');
+                        }
+                        builder.deleteCharAt(builder.length() - 1);
+                        instructor.setResearchInterest(builder.toString());
+                    }else {
+                        String content = contentElement.text();
+                        instructor.setResearchInterest(content);
+                    }
+                    break;
+                }
+                case "Discipline":{
+                    String content = fieldElement.nextElementSibling().text();
+                    instructor.setDiscipline(content);
+                    break;
+                }
+                default:{
+                    String content = fieldElement.nextElementSibling().text();
+                    instructor.addOtherInfo(label, content);
+                }
+            }
+        }
+        return instructor;
     }
 
     /**
