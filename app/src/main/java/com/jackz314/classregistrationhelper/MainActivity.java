@@ -1,5 +1,6 @@
 package com.jackz314.classregistrationhelper;
 
+import android.app.AlertDialog;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.Intent;
@@ -271,9 +272,10 @@ public class MainActivity extends AppCompatActivity
             Intent intent = new Intent(MainActivity.this, SettingsActivity.class);
             startActivity(intent);
         } else if (id == R.id.nav_about) {
-
-        } else if (id == R.id.nav_share) {
-
+            new AlertDialog.Builder(this)
+                    .setTitle("About")
+                    .setMessage(getString(R.string.about_text))
+                    .setPositiveButton("Got It!", (dialog1, which) -> dialog1.dismiss()).show();
         }
 
         DrawerLayout drawer = findViewById(R.id.drawer_layout);

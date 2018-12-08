@@ -18,6 +18,8 @@
     <string name="notif_unknown_err_title">Encountered unknown error while registering for classes</string>
     <string name="notif_unknown_err_content">Please try again later, it could be the internet, or the website, or this app that has failed you.</string>
 
+    <string name="about_text">I\'m Jack. Nice to meet you!</string>
+
     <!-- URLs -->
     <!-- Course info URLs -->
     <string name="get_course_url">https://mystudentrecord.ucmerced.edu/pls/PROD/xhwschedule.P_ViewCrnDetail</string>
