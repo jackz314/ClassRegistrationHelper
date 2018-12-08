@@ -241,9 +241,11 @@ public class SettingsActivity extends AppCompatPreferenceActivity {
             Preference sysNotifPreference = findPreference(getString(R.string.pref_key_sys_notif_setting));
             sysNotifPreference.setOnPreferenceClickListener(preference -> {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    Intent intent = new Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS);
-                    intent.putExtra(Settings.EXTRA_APP_PACKAGE, getContext().getPackageName());
-                    startActivity(intent);
+                    Intent settingsIntent = new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            .putExtra(Settings.EXTRA_APP_PACKAGE, getContext().getPackageName());
+                         //   .putExtra(Settings.EXTRA_CHANNEL_ID, CHANNEL_ID);
+                    startActivity(settingsIntent);
                 }else {
                     Intent intent = new Intent();
                     intent.setAction("android.settings.APP_NOTIFICATION_SETTINGS");
