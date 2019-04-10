@@ -31,6 +31,7 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -734,6 +735,7 @@ public class CourseUtils {
                     return null;
                 }
             }
+            //deal with can't register later
             return htmlResponse;
 
         } catch (IOException e) {
@@ -839,6 +841,7 @@ public class CourseUtils {
     static String getRegisterValidTerm(Context context){
         String getListUrl = context.getString(R.string.get_my_list_url);
         String sessionId = PreferenceManager.getDefaultSharedPreferences(context).getString(context.getString(R.string.session_id), null);
+        Log.e(TAG, "Get register valid term failed, session id null");
         if(sessionId == null) return null;
         OkHttpClient client = new OkHttpClient();
         Request request = new Request.Builder()
@@ -991,6 +994,36 @@ public class CourseUtils {
         }
         String myCoursesHtml = getMyCoursesHtml(context);
         if(myCoursesHtml == null) return null;
+        if(myCoursesHtml.contains("You may register during the following times")){
+            Log.w(TAG, "Not the right time to register");
+            Document document = Jsoup.parse(myCoursesHtml);
+            Elements registerTimeElems = document.select(".dddefault");
+            if(registerTimeElems != null && registerTimeElems.size() == 4){
+                try {
+                    String startTime = registerTimeElems.get(0).text() + " " + registerTimeElems.get(1).text();
+                    String endTime = registerTimeElems.get(2).text() + " " + registerTimeElems.get(3).text();
+                    List<String[]> errorNotice = new ArrayList<>();
+                    for (String crn : registerCrnSet) {
+                        errorNotice.add(new String[]{crn, "It's not your time to register yet, your register time is\nFrom "
+                                + startTime + " to " + endTime});
+                    }
+                    return errorNotice;
+                }catch (Exception e){
+                    e.printStackTrace();
+                    List<String[]> errorNotice = new ArrayList<>();
+                    for (String crn : registerCrnSet) {
+                        errorNotice.add(new String[]{crn, "It's not the your time to register yet"});
+                    }
+                    return errorNotice;
+                }
+            }else {
+                List<String[]> errorNotice = new ArrayList<>();
+                for (String crn : registerCrnSet) {
+                    errorNotice.add(new String[]{crn, "It's not the your time to register yet"});
+                }
+                return errorNotice;
+            }
+        }
         Document document = Jsoup.parse(myCoursesHtml);
         //need to append these registered classes post requests to a register request
         Elements registeredPostRequests = document.select("[summary=\"current schedule\"] [NAME]");
@@ -1045,7 +1078,7 @@ public class CourseUtils {
                     .add("start_date_in", "")
                     .add("end_date_in", "");
         }
-        //then add other summary requests
+        //then add other summary of requests
         String totalRegisteredCount = String.valueOf(registeredPostRequests.size()/13);//every registered course has 13 requests. Alternatively, can select all tr elements and use the count of the result minus 1 (the first one is summary) to get the registered count
         String totalRegisterCount = String.valueOf(registerCrnSet.size());
         requestBodyBuilder
@@ -1068,6 +1101,7 @@ public class CourseUtils {
                 Log.e(TAG, "Get my list post response is null");
                 return null;
             }
+            //Log.d(TAG, "Register course result:\n" + htmlResponse);
             //deal with possible errors
             //session id expired
             if(htmlResponse.contains("http-equiv=\"refresh\"")){
@@ -1090,9 +1124,8 @@ public class CourseUtils {
                     return null;
                 }
             }
-            //term is not valid
+            //term or time is not valid
             if(htmlResponse.contains("Your Faculty or Advisor is reviewing your registration at this time. Please try again later.")){
-                //term is not valid
                 term = getRegisterValidTerm(context);
                 if(term == null){
                     Log.e(TAG, "Initial valid term is null");
@@ -1111,10 +1144,26 @@ public class CourseUtils {
                 if (response.body() != null) {
                     //update html response
                     htmlResponse = response.body().string();
+                    if(htmlResponse.contains("Your Faculty or Advisor is reviewing your registration at this time. Please try again later.")){
+                        Log.w(TAG, "Not the right time to register");
+                        List<String[]> errorNotice = new ArrayList<>();
+                        for (String crn : registerCrnSet) {
+                            errorNotice.add(new String[]{crn, "It's not the your time to register yet"});
+                        }
+                        return errorNotice;
+                    }
                 }else {
                     Log.e(TAG, "Retry with new session id get my list post response is null");
                     return null;
                 }
+            }
+            if(htmlResponse.contains("You may register during the following times")){
+                Log.w(TAG, "Not the right time to register");
+                List<String[]> errorNotice = new ArrayList<>();
+                for (String crn : registerCrnSet) {
+                    errorNotice.add(new String[]{crn, "It's not the your time to register yet"});
+                }
+                return errorNotice;
             }
             if(htmlResponse.contains("Error occurred while processing registration changes.")){//happens if post requests are malformed, for example, unmatched parameter group rows, or invalid crn digits (not 5)
                 Log.e(TAG, "Error occurred while processing registration changes.\n" + htmlResponse);
@@ -1133,6 +1182,7 @@ public class CourseUtils {
             //note: at this point, after bypassing the checks above, this means that all of the technical errors are eliminated (hopefully), the remaining errors are
             //messages like "Duplicate CRN", "Class is full" or something like that
 
+            //get registration errors and return to user
             List<String[]> errors = getErrorsFromRegistrationResponse(htmlResponse);
             List<String> errorCrns = new LinkedList<>();
             for(int i = 0; i < errors.size(); i++){

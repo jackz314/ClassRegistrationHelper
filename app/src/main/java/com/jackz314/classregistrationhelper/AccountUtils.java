@@ -109,6 +109,7 @@ public class AccountUtils {
      * @return String of SESSID (session id)
      */
     static String authorize(Context context, String username, String password){
+        Log.d(TAG, "Authorizing");
         if(username == null || username.isEmpty() || password == null || password.isEmpty()) return null;//failed since no credentials are present
         OkHttpClient client = new OkHttpClient();
         Request signInRequest = new Request.Builder()

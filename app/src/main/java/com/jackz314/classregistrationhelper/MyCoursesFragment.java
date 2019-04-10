@@ -23,6 +23,10 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.select.Elements;
+
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.LinkedList;
@@ -324,15 +328,18 @@ public class MyCoursesFragment extends Fragment {
                 Log.e(TAG, "MY COURSE FRAGMENT NULL");
                 return null;
             }
-            if(fragment.sessionId == null) {
-                Log.e(TAG, "MY COURSE SESSION ID NULL");
-                return null;
-            }
             Context context = fragment.getContext();
             if (context == null) {
                 Log.e(TAG, "MY COURSE CONTEXT NULL");
+                Objects.requireNonNull(fragment.getActivity()).runOnUiThread(() -> Toast.makeText(context, "Error: context is null", Toast.LENGTH_SHORT).show());
                 return null;
             }
+            if(fragment.sessionId == null) {
+                Log.e(TAG, "MY COURSE SESSION ID NULL");
+                Objects.requireNonNull(fragment.getActivity()).runOnUiThread(() -> Toast.makeText(context, "Error: session id is null", Toast.LENGTH_SHORT).show());
+                return null;
+            }
+
 
             //get my course list
             String coursesHtml = getMyCoursesHtml(context);
@@ -343,6 +350,26 @@ public class MyCoursesFragment extends Fragment {
             }else if(coursesHtml.equals("UNEXPECTED")) {
                 Log.e(TAG, "COURSE HTML UNEXPECTED");
                 Objects.requireNonNull(fragment.getActivity()).runOnUiThread(() -> Toast.makeText(context, fragment.getString(R.string.toast_unknown_error), Toast.LENGTH_SHORT).show());
+                return null;
+            }else if(coursesHtml.contains("You may register during the following times")){
+                Log.w(TAG, "It's not your time to register yet");
+                Document document = Jsoup.parse(coursesHtml);
+                Elements registerTimeElems = document.select(".dddefault");
+                if(registerTimeElems != null && registerTimeElems.size() == 4){
+                    try {
+                        String startTime = registerTimeElems.get(0).text() + " " + registerTimeElems.get(1).text();
+                        String endTime = registerTimeElems.get(2).text() + " " + registerTimeElems.get(3).text();
+                        Objects.requireNonNull(fragment.getActivity()).runOnUiThread(() ->
+                                Toast.makeText(context, "It's not your time to register yet, your register time is\nFrom "
+                                        + startTime + " to " + endTime, Toast.LENGTH_LONG).show());
+                    }catch (Exception e){
+                        e.printStackTrace();
+                        Objects.requireNonNull(fragment.getActivity()).runOnUiThread(() -> Toast.makeText(context, "It's not your time to register yet", Toast.LENGTH_SHORT).show());
+                    }
+                }else {
+                    Objects.requireNonNull(fragment.getActivity()).runOnUiThread(() ->
+                            Toast.makeText(context, "It's not your time to register yet", Toast.LENGTH_SHORT).show());
+                }
                 return null;
             }
             List<Course> myCourses = processAndStoreMyCourses(coursesHtml, context);
@@ -371,7 +398,7 @@ public class MyCoursesFragment extends Fragment {
                         fragment.swipeRefreshLayout.setRefreshing(false);
                     }
                     Log.e(TAG, "MY COURSES NULL");
-                    Toast.makeText(fragment.getContext(), fragment.getString(R.string.toast_unknown_error), Toast.LENGTH_SHORT).show();
+                    //Toast.makeText(fragment.getContext(), fragment.getString(R.string.toast_unknown_error), Toast.LENGTH_SHORT).show();
                 }else {
                     fragment.processMyCoursesData(courses);
                 }

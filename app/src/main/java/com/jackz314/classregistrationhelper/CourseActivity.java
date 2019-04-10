@@ -356,7 +356,9 @@ public class CourseActivity extends AppCompatActivity {
 
         @Override
         protected void onPostExecute(Instructor instructor) {
-            activityReference.get().setUpInstructorDetailDialog(instructor);
+            if(activityReference.get() != null){
+                activityReference.get().setUpInstructorDetailDialog(instructor);
+            }
             super.onPostExecute(instructor);
         }
     }
