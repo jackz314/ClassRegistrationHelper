@@ -226,7 +226,9 @@ public class CourseActivity extends AppCompatActivity {
                 activity.runOnUiThread(() -> Toast.makeText(activity, activity.getString(R.string.toast_internet_error), Toast.LENGTH_SHORT).show());
                 e.printStackTrace();
             } catch (Exception e) {//parsing html or other errors
-                activity.runOnUiThread(() -> Toast.makeText(activity, activity.getString(R.string.toast_unknown_error), Toast.LENGTH_SHORT).show());
+                if (activity != null) {
+                    activity.runOnUiThread(() -> Toast.makeText(activity, activity.getString(R.string.toast_unknown_error), Toast.LENGTH_SHORT).show());
+                }
                 e.printStackTrace();
             }
             return null;

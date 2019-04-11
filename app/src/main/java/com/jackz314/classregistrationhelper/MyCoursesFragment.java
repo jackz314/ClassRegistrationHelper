@@ -171,7 +171,7 @@ public class MyCoursesFragment extends Fragment {
             String urlForCourseStr = getString(R.string.get_course_url);
             HttpUrl urlForCourse = Objects.requireNonNull(HttpUrl.parse(urlForCourseStr)).newBuilder()
                     .addQueryParameter("subjcode", courseInfo.getNumber().substring(0, courseInfo.getNumber().indexOf('-')))
-                    .addQueryParameter("crsenumb", courseInfo.getNumber().substring(courseInfo.getNumber().indexOf('-', 0) + 1, courseInfo.getNumber().lastIndexOf('-')))//position of second '-' if exist
+                    .addQueryParameter("crsenumb", courseInfo.getNumber().substring(courseInfo.getNumber().indexOf('-') + 1, courseInfo.getNumber().lastIndexOf('-')))//position of second '-' if exist
                     .addQueryParameter("validterm", getPreferredTerm(getContext()))
                     .addQueryParameter("crn", courseInfo.getCrn()).build();
             Intent intent = new Intent(getActivity(), CourseActivity.class);
@@ -346,11 +346,11 @@ public class MyCoursesFragment extends Fragment {
             if(coursesHtml == null){
                 Log.e(TAG, "MY COURSEs HTML NULL");
                 Objects.requireNonNull(fragment.getActivity()).runOnUiThread(() -> Toast.makeText(context, fragment.getString(R.string.toast_internet_error), Toast.LENGTH_SHORT).show());
-                return null;
+                coursesHtml = null;
             }else if(coursesHtml.equals("UNEXPECTED")) {
                 Log.e(TAG, "COURSE HTML UNEXPECTED");
                 Objects.requireNonNull(fragment.getActivity()).runOnUiThread(() -> Toast.makeText(context, fragment.getString(R.string.toast_unknown_error), Toast.LENGTH_SHORT).show());
-                return null;
+                coursesHtml = null;
             }else if(coursesHtml.contains("You may register during the following times")){
                 Log.w(TAG, "It's not your time to register yet");
                 Document document = Jsoup.parse(coursesHtml);
@@ -370,7 +370,7 @@ public class MyCoursesFragment extends Fragment {
                     Objects.requireNonNull(fragment.getActivity()).runOnUiThread(() ->
                             Toast.makeText(context, "It's not your time to register yet", Toast.LENGTH_SHORT).show());
                 }
-                return null;
+                coursesHtml = null;
             }
             List<Course> myCourses = processAndStoreMyCourses(coursesHtml, context);
             if(myCourses == null){

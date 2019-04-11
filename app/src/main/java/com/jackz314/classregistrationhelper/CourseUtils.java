@@ -31,7 +31,6 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
-import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -804,12 +803,23 @@ public class CourseUtils {
         return registeredCourses;
     }
 
+    /**
+     * Process and store courses (combination of list and registered courses)
+     * @param htmlResponse registered course html response, null if still want to update but isn't currently in register time (for future preparation)
+     * @param context context to handle SharedPrefs
+     * @return combined courses on my list
+     */
     static List<Course> processAndStoreMyCourses(String htmlResponse, Context context){
-
-        List<Course> registeredCourses = processAndStoreRegisteredCourses(htmlResponse, context);
 
         //saved course selection list part
         List<Course> savedCourses = getSavedCoursesList(context);
+        if(htmlResponse == null){//skip the register part since it's currently not available
+            return fillCourseInfoFromCatalog(context, savedCourses);
+        }
+
+        List<Course> registeredCourses = processAndStoreRegisteredCourses(htmlResponse, context);
+
+
         if(savedCourses != null){
             registeredCourses.addAll(0, savedCourses);
         }
